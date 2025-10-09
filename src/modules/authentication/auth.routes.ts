@@ -1,0 +1,103 @@
+import { Router } from 'express';
+import { body } from 'express-validator';
+import { validate } from '../../middleware/validator';
+import { strictLimiter } from '../../middleware/rateLimiter';
+import * as authController from './auth.controller';
+import { protect } from './auth.middleware';
+
+const router = Router();
+
+// @route   POST /api/auth/register
+// @desc    Register new user
+// @access  Public
+router.post(
+  '/register',
+  strictLimiter,
+  validate([
+    body('badgeNo')
+      .trim()
+      .notEmpty()
+      .withMessage('Badge number is required'),
+    body('name')
+      .trim()
+      .notEmpty()
+      .withMessage('Name is required')
+      .isLength({ min: 2, max: 100 })
+      .withMessage('Name must be between 2 and 100 characters'),
+    body('username')
+      .trim()
+      .notEmpty()
+      .withMessage('Username is required')
+      .isLength({ min: 3, max: 50 })
+      .withMessage('Username must be between 3 and 50 characters'),
+    body('email')
+      .trim()
+      .notEmpty()
+      .withMessage('Email is required')
+      .isEmail()
+      .withMessage('Please provide a valid email address'),
+    body('password')
+      .notEmpty()
+      .withMessage('Password is required')
+      .isLength({ min: 6 })
+      .withMessage('Password must be at least 6 characters'),
+    body('contactNo')
+      .trim()
+      .notEmpty()
+      .withMessage('Contact number is required')
+      .matches(/^[0-9]{11}$/)
+      .withMessage('Contact number must be 11 digits'),
+    body('address')
+      .trim()
+      .notEmpty()
+      .withMessage('Address is required')
+      .isLength({ max: 200 })
+      .withMessage('Address must not exceed 200 characters'),
+    body('position')
+      .trim()
+      .notEmpty()
+      .withMessage('Position is required')
+      .isIn([
+        'Traffic Enforcement Officer',
+        'Road Traffic Inspector',
+        'Highway Patrol Officer',
+        'Traffic Warden',
+        'Accident Investigator',
+      ])
+      .withMessage('Invalid position'),
+    body('role')
+      .optional()
+      .isIn(['Admin', 'Officer', 'Treasurer'])
+      .withMessage('Invalid role'),
+    body('status')
+      .optional()
+      .isIn(['Enabled', 'Disabled'])
+      .withMessage('Invalid status'),
+  ]),
+  authController.register
+);
+
+// @route   POST /api/auth/login
+// @desc    Login user
+// @access  Public
+router.post(
+  '/login',
+  strictLimiter,
+  validate([
+    body('username')
+      .trim()
+      .notEmpty()
+      .withMessage('Username or email is required'),
+    body('password')
+      .notEmpty()
+      .withMessage('Password is required'),
+  ]),
+  authController.login
+);
+
+// @route   GET /api/auth/me
+// @desc    Get current logged in user
+// @access  Private
+router.get('/me', protect, authController.getMe);
+
+export default router;
