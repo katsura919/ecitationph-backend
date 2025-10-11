@@ -11,7 +11,7 @@ export interface IUser extends Document {
   contactNo: string;
   address: string;
   position: string;
-  role: 'Admin' | 'Officer' | 'Treasurer' | 'Offender';
+  role: 'Admin' | 'Officer' | 'Treasurer' ;
   status: 'Enabled' | 'Disabled';
   profilePic?: string;
   createdAt: Date;
