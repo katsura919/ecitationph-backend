@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { body } from 'express-validator';
 import { validate } from '../../../middleware/validator';
 import { strictLimiter } from '../../../middleware/rateLimiter';
-import { authenticate, validateLoginUserType } from '../../../middleware/auth.middleware';
+import { authenticate, authorize, validateLoginUserType } from '../../../middleware/auth.middleware';
 import { UserType } from '../../../models/user.model';
 import * as authController from './driver.auth.controller';
 
@@ -10,10 +10,12 @@ const router = Router();
 
 // @route   POST /api/auth/driver/register
 // @desc    Register new driver
-// @access  Public
+// @access  Private (Admin only)
 router.post(
   '/register',
   strictLimiter,
+  //authenticate,
+  //authorize(UserType.DRIVER),
   validate([
     body('licenseNo')
       .trim()

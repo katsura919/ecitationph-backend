@@ -71,6 +71,38 @@ export const authenticate = async (
 
 
 /**
+ * Authorization middleware - Check if authenticated user has required user type(s)
+ * This runs AFTER authenticate middleware to check user permissions
+ * 
+ * @param allowedUserTypes - One or more user types allowed to access the route
+ * 
+ * Usage:
+ * router.post('/register', authenticate, authorize(UserType.ADMIN), controller)
+ * router.get('/data', authenticate, authorize(UserType.ADMIN, UserType.ENFORCER), controller)
+ */
+export const authorize = (...allowedUserTypes: UserType[]) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    // User must be authenticated first
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required.',
+      });
+    }
+
+    // Check if user's type is in allowed types
+    if (!allowedUserTypes.includes(req.user.userType)) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied. Insufficient permissions.',
+      });
+    }
+
+    next();
+  };
+};
+
+/**
  * Login validation middleware - Check if user exists and has correct user type
  * This runs BEFORE authentication in login routes to validate user type
  * 
