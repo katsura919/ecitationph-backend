@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
-import User, { UserType, UserStatus } from '../../../models/user.model';
+import User, { UserType, UserStatus, EnforcerRole } from '../../../models/user.model';
 
 // Generate JWT Token
 const generateToken = (userId: string): string => {
@@ -11,28 +11,31 @@ const generateToken = (userId: string): string => {
   );
 };
 
-// @desc    Register new driver
-// @route   POST /api/auth/driver/register
+// @desc    Register new enforcer/admin
+// @route   POST /api/auth/enforcer/register
 // @access  Public
 export const register = async (req: Request, res: Response) => {
   try {
     const {
-      licenseNo,
-      firstName,
-      lastName,
-      middleName,
+      badgeNo,
+      name,
+      username,
       email,
       password,
       contactNo,
       address,
-      bday,
-      nationality,
+      role,
+      status,
       profilePic,
+      userType, // Can be 'admin' or 'enforcer'
     } = req.body;
 
-    // Check if driver already exists
+    // Validate userType
+    const validUserType = userType === UserType.ADMIN ? UserType.ADMIN : UserType.ENFORCER;
+
+    // Check if user already exists
     const existingUser = await User.findOne({
-      $or: [{ email }, { licenseNo: licenseNo.toUpperCase() }],
+      $or: [{ email }, { username }, { badgeNo }],
     });
 
     if (existingUser) {
@@ -42,28 +45,32 @@ export const register = async (req: Request, res: Response) => {
           error: 'Email already registered',
         });
       }
-      if (existingUser.licenseNo === licenseNo.toUpperCase()) {
+      if (existingUser.username === username) {
         return res.status(400).json({
           success: false,
-          error: 'License number already exists',
+          error: 'Username already taken',
+        });
+      }
+      if (existingUser.badgeNo === badgeNo) {
+        return res.status(400).json({
+          success: false,
+          error: 'Badge number already exists',
         });
       }
     }
 
-    // Create new driver user
+    // Create new enforcer/admin user
     const user = await User.create({
-      userType: UserType.DRIVER,
-      licenseNo,
-      firstName,
-      lastName,
-      middleName,
+      userType: validUserType,
+      badgeNo,
+      name,
+      username,
       email,
       password,
       contactNo,
       address,
-      bday: new Date(bday),
-      nationality,
-      status: UserStatus.ACTIVE,
+      role: role || EnforcerRole.OFFICER,
+      status: status || UserStatus.ACTIVE,
       profilePic,
     });
 
@@ -73,20 +80,18 @@ export const register = async (req: Request, res: Response) => {
     // Return user data without password
     res.status(201).json({
       success: true,
-      message: 'Driver registered successfully',
+      message: 'Enforcer registered successfully',
       data: {
         user: {
           id: user._id,
           userType: user.userType,
-          licenseNo: user.licenseNo,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          middleName: user.middleName,
+          badgeNo: user.badgeNo,
+          name: user.name,
+          username: user.username,
           email: user.email,
           contactNo: user.contactNo,
           address: user.address,
-          bday: user.bday,
-          nationality: user.nationality,
+          role: user.role,
           status: user.status,
           profilePic: user.profilePic,
         },
@@ -112,28 +117,25 @@ export const register = async (req: Request, res: Response) => {
   }
 };
 
-// @desc    Login driver
-// @route   POST /api/auth/driver/login
+// @desc    Login enforcer/admin
+// @route   POST /api/auth/enforcer/login
 // @access  Public
 export const login = async (req: Request, res: Response) => {
   try {
-    const { licenseNo, password } = req.body;
+    const { username, password } = req.body;
 
     // Validate request
-    if (!licenseNo || !password) {
+    if (!username || !password) {
       return res.status(400).json({
         success: false,
-        error: 'Please provide license number and password',
+        error: 'Please provide username and password',
       });
     }
 
-    // Find driver by license number or email
+    // Find enforcer/admin by username or email
     const user = await User.findOne({
-      $or: [
-        { licenseNo: licenseNo.toUpperCase() },
-        { email: licenseNo.toLowerCase() }
-      ],
-      userType: UserType.DRIVER, // Only drivers can login here
+      $or: [{ username }, { email: username }],
+      userType: { $in: [UserType.ADMIN, UserType.ENFORCER] }, // Only enforcer/admin can login here
     }).select('+password');
 
     if (!user) {
@@ -178,11 +180,11 @@ export const login = async (req: Request, res: Response) => {
         user: {
           id: user._id,
           userType: user.userType,
-          licenseNo: user.licenseNo,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          middleName: user.middleName,
+          badgeNo: user.badgeNo,
+          name: user.name,
+          username: user.username,
           email: user.email,
+          role: user.role,
           status: user.status,
         },
         token,
@@ -197,8 +199,8 @@ export const login = async (req: Request, res: Response) => {
   }
 };
 
-// @desc    Get current logged in driver
-// @route   GET /api/auth/driver/me
+// @desc    Get current logged in enforcer/admin
+// @route   GET /api/auth/enforcer/me
 // @access  Private
 export const getMe = async (req: Request, res: Response) => {
   try {
@@ -212,8 +214,8 @@ export const getMe = async (req: Request, res: Response) => {
       });
     }
 
-    // Verify user is a driver
-    if (user.userType !== UserType.DRIVER) {
+    // Verify user is enforcer/admin
+    if (user.userType !== UserType.ADMIN && user.userType !== UserType.ENFORCER) {
       return res.status(403).json({
         success: false,
         error: 'Access denied. Invalid user type.',
@@ -225,16 +227,13 @@ export const getMe = async (req: Request, res: Response) => {
       data: {
         id: user._id,
         userType: user.userType,
-        licenseNo: user.licenseNo,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        middleName: user.middleName,
-        fullName: user.getFullName(),
+        badgeNo: user.badgeNo,
+        name: user.name,
+        username: user.username,
         email: user.email,
         contactNo: user.contactNo,
         address: user.address,
-        bday: user.bday,
-        nationality: user.nationality,
+        role: user.role,
         status: user.status,
         profilePic: user.profilePic,
         createdAt: user.createdAt,

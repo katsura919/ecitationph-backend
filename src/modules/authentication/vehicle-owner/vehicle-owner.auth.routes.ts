@@ -3,23 +3,17 @@ import { body } from 'express-validator';
 import { validate } from '../../../middleware/validator';
 import { strictLimiter } from '../../../middleware/rateLimiter';
 import { authenticate } from '../../../middleware/auth.middleware';
-import * as authController from './driver.auth.controller';
+import * as authController from './vehicle-owner.auth.controller';
 
 const router = Router();
 
-// @route   POST /api/auth/driver/register
-// @desc    Register new driver
+// @route   POST /api/auth/vehicle-owner/register
+// @desc    Register new vehicle owner
 // @access  Public
 router.post(
   '/register',
   strictLimiter,
   validate([
-    body('licenseNo')
-      .trim()
-      .notEmpty()
-      .withMessage('License number is required')
-      .isLength({ min: 5, max: 20 })
-      .withMessage('License number must be between 5 and 20 characters'),
     body('firstName')
       .trim()
       .notEmpty()
@@ -85,31 +79,36 @@ router.post(
       .matches(/^[0-9]{4}$/)
       .withMessage('Postal code must be 4 digits'),
     body('bday')
-      .notEmpty()
-      .withMessage('Birthday is required')
+      .optional()
       .isISO8601()
       .withMessage('Please provide a valid date'),
     body('nationality')
+      .optional()
       .trim()
-      .notEmpty()
-      .withMessage('Nationality is required')
       .isLength({ max: 50 })
       .withMessage('Nationality must not exceed 50 characters'),
+    body('licenseNo')
+      .optional()
+      .trim()
+      .isLength({ min: 5, max: 20 })
+      .withMessage('License number must be between 5 and 20 characters'),
   ]),
   authController.register
 );
 
-// @route   POST /api/auth/driver/login
-// @desc    Login driver
+// @route   POST /api/auth/vehicle-owner/login
+// @desc    Login vehicle owner
 // @access  Public
 router.post(
   '/login',
   strictLimiter,
   validate([
-    body('licenseNo')
+    body('email')
       .trim()
       .notEmpty()
-      .withMessage('License number or email is required'),
+      .withMessage('Email is required')
+      .isEmail()
+      .withMessage('Please provide a valid email address'),
     body('password')
       .notEmpty()
       .withMessage('Password is required'),
@@ -117,8 +116,8 @@ router.post(
   authController.login
 );
 
-// @route   GET /api/auth/driver/me
-// @desc    Get current logged in driver
+// @route   GET /api/auth/vehicle-owner/me
+// @desc    Get current logged in vehicle owner
 // @access  Private
 router.get('/me', authenticate, authController.getMe);
 

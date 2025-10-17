@@ -2,18 +2,22 @@ import { Router } from 'express';
 import { body } from 'express-validator';
 import { validate } from '../../../middleware/validator';
 import { strictLimiter } from '../../../middleware/rateLimiter';
-import * as authController from './user.auth.controller';
-import { protect } from './user.auth.middleware';
+import { authenticate } from '../../../middleware/auth.middleware';
+import * as authController from './enforcer.auth.controller';
 
 const router = Router();
 
-// @route   POST /api/auth/register
-// @desc    Register new user
+// @route   POST /api/auth/enforcer/register
+// @desc    Register new enforcer/admin
 // @access  Public
 router.post(
   '/register',
   strictLimiter,
   validate([
+    body('userType')
+      .optional()
+      .isIn(['admin', 'enforcer'])
+      .withMessage('User type must be admin or enforcer'),
     body('badgeNo')
       .trim()
       .notEmpty()
@@ -47,38 +51,50 @@ router.post(
       .withMessage('Contact number is required')
       .matches(/^[0-9]{11}$/)
       .withMessage('Contact number must be 11 digits'),
-    body('address')
+    body('address.street')
       .trim()
       .notEmpty()
-      .withMessage('Address is required')
-      .isLength({ max: 200 })
-      .withMessage('Address must not exceed 200 characters'),
-    body('position')
+      .withMessage('Street is required')
+      .isLength({ max: 100 })
+      .withMessage('Street must not exceed 100 characters'),
+    body('address.barangay')
       .trim()
       .notEmpty()
-      .withMessage('Position is required')
-      .isIn([
-        'Traffic Enforcement Officer',
-        'Road Traffic Inspector',
-        'Highway Patrol Officer',
-        'Traffic Warden',
-        'Accident Investigator',
-      ])
-      .withMessage('Invalid position'),
+      .withMessage('Barangay is required')
+      .isLength({ max: 100 })
+      .withMessage('Barangay must not exceed 100 characters'),
+    body('address.city')
+      .trim()
+      .notEmpty()
+      .withMessage('City is required')
+      .isLength({ max: 100 })
+      .withMessage('City must not exceed 100 characters'),
+    body('address.province')
+      .trim()
+      .notEmpty()
+      .withMessage('Province is required')
+      .isLength({ max: 100 })
+      .withMessage('Province must not exceed 100 characters'),
+    body('address.postalCode')
+      .trim()
+      .notEmpty()
+      .withMessage('Postal code is required')
+      .matches(/^[0-9]{4}$/)
+      .withMessage('Postal code must be 4 digits'),
     body('role')
       .optional()
       .isIn(['Admin', 'Officer', 'Treasurer'])
       .withMessage('Invalid role'),
     body('status')
       .optional()
-      .isIn(['Enabled', 'Disabled'])
+      .isIn(['active', 'inactive', 'suspended'])
       .withMessage('Invalid status'),
   ]),
   authController.register
 );
 
-// @route   POST /api/auth/login
-// @desc    Login user
+// @route   POST /api/auth/enforcer/login
+// @desc    Login enforcer/admin
 // @access  Public
 router.post(
   '/login',
@@ -95,9 +111,9 @@ router.post(
   authController.login
 );
 
-// @route   GET /api/auth/me
-// @desc    Get current logged in user
+// @route   GET /api/auth/enforcer/me
+// @desc    Get current logged in enforcer/admin
 // @access  Private
-router.get('/me', protect, authController.getMe);
+router.get('/me', authenticate, authController.getMe);
 
 export default router;

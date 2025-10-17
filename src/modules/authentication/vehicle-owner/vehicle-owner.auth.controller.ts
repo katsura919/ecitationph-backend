@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
-import User from '../../../models/user.model';
+import User, { UserType, UserStatus } from '../../../models/user.model';
 
 // Generate JWT Token
 const generateToken = (userId: string): string => {
@@ -11,64 +11,61 @@ const generateToken = (userId: string): string => {
   );
 };
 
-// @desc    Register new user
-// @route   POST /api/auth/register
+// @desc    Register new vehicle owner
+// @route   POST /api/auth/vehicle-owner/register
 // @access  Public
 export const register = async (req: Request, res: Response) => {
   try {
     const {
-      badgeNo,
-      name,
-      username,
+      firstName,
+      lastName,
+      middleName,
       email,
       password,
       contactNo,
       address,
-      position,
-      role,
-      status,
+      bday,
+      nationality,
+      licenseNo, // Optional for vehicle owners
       profilePic,
     } = req.body;
 
-    // Check if user already exists
-    const existingUser = await User.findOne({
-      $or: [{ email }, { username }, { badgeNo }],
-    });
+    // Check if vehicle owner already exists
+    const emailExists = await User.findOne({ email });
+    if (emailExists) {
+      return res.status(400).json({
+        success: false,
+        error: 'Email already registered',
+      });
+    }
 
-    if (existingUser) {
-      if (existingUser.email === email) {
+    // Check license number if provided
+    if (licenseNo) {
+      const licenseExists = await User.findOne({ licenseNo: licenseNo.toUpperCase() });
+      if (licenseExists) {
         return res.status(400).json({
           success: false,
-          error: 'Email already registered',
-        });
-      }
-      if (existingUser.username === username) {
-        return res.status(400).json({
-          success: false,
-          error: 'Username already taken',
-        });
-      }
-      if (existingUser.badgeNo === badgeNo) {
-        return res.status(400).json({
-          success: false,
-          error: 'Badge number already exists',
+          error: 'License number already exists',
         });
       }
     }
 
-    // Create new user
+    // Create new vehicle owner user
     const user = await User.create({
-      badgeNo,
-      name,
-      username,
+      userType: UserType.VEHICLE_OWNER,
+      firstName,
+      lastName,
+      middleName,
       email,
       password,
       contactNo,
       address,
-      position,
-      role: role || 'Officer',
-      status: status || 'Enabled',
+      bday: bday ? new Date(bday) : undefined,
+      nationality,
+      licenseNo: licenseNo || undefined,
+      status: UserStatus.ACTIVE,
       profilePic,
+      vehicles: [], // Initialize empty vehicles array
     });
 
     // Generate token
@@ -77,18 +74,21 @@ export const register = async (req: Request, res: Response) => {
     // Return user data without password
     res.status(201).json({
       success: true,
-      message: 'User registered successfully',
+      message: 'Vehicle owner registered successfully',
       data: {
         user: {
           id: user._id,
-          badgeNo: user.badgeNo,
-          name: user.name,
-          username: user.username,
+          userType: user.userType,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          middleName: user.middleName,
+          fullName: user.getFullName(),
           email: user.email,
           contactNo: user.contactNo,
           address: user.address,
-          position: user.position,
-          role: user.role,
+          bday: user.bday,
+          nationality: user.nationality,
+          licenseNo: user.licenseNo,
           status: user.status,
           profilePic: user.profilePic,
         },
@@ -114,24 +114,25 @@ export const register = async (req: Request, res: Response) => {
   }
 };
 
-// @desc    Login user
-// @route   POST /api/auth/login
+// @desc    Login vehicle owner
+// @route   POST /api/auth/vehicle-owner/login
 // @access  Public
 export const login = async (req: Request, res: Response) => {
   try {
-    const { username, password } = req.body;
+    const { email, password } = req.body;
 
     // Validate request
-    if (!username || !password) {
+    if (!email || !password) {
       return res.status(400).json({
         success: false,
-        error: 'Please provide username and password',
+        error: 'Please provide email and password',
       });
     }
 
-    // Find user by username or email (allow login with either)
+    // Find vehicle owner by email
     const user = await User.findOne({
-      $or: [{ username }, { email: username }],
+      email: email.toLowerCase(),
+      userType: UserType.VEHICLE_OWNER, // Only vehicle owners can login here
     }).select('+password');
 
     if (!user) {
@@ -141,11 +142,18 @@ export const login = async (req: Request, res: Response) => {
       });
     }
 
-    // Check if user is disabled
-    if (user.status === 'Disabled') {
+    // Check if user is inactive or suspended
+    if (user.status === UserStatus.INACTIVE) {
       return res.status(403).json({
         success: false,
-        error: 'Account is disabled. Please contact administrator.',
+        error: 'Account is inactive. Please contact administrator.',
+      });
+    }
+
+    if (user.status === UserStatus.SUSPENDED) {
+      return res.status(403).json({
+        success: false,
+        error: 'Account is suspended. Please contact administrator.',
       });
     }
 
@@ -165,7 +173,19 @@ export const login = async (req: Request, res: Response) => {
     res.status(200).json({
       success: true,
       message: 'Login successful',
-      token,
+      data: {
+        user: {
+          id: user._id,
+          userType: user.userType,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          middleName: user.middleName,
+          fullName: user.getFullName(),
+          email: user.email,
+          status: user.status,
+        },
+        token,
+      },
     });
   } catch (error: any) {
     res.status(500).json({
@@ -176,13 +196,13 @@ export const login = async (req: Request, res: Response) => {
   }
 };
 
-// @desc    Get current logged in user
-// @route   GET /api/auth/me
+// @desc    Get current logged in vehicle owner
+// @route   GET /api/auth/vehicle-owner/me
 // @access  Private
 export const getMe = async (req: Request, res: Response) => {
   try {
     // User is already attached to req by auth middleware
-    const user = await User.findById((req as any).user.id);
+    const user = await User.findById((req as any).user.id).populate('vehicles');
 
     if (!user) {
       return res.status(404).json({
@@ -191,20 +211,34 @@ export const getMe = async (req: Request, res: Response) => {
       });
     }
 
+    // Verify user is a vehicle owner
+    if (user.userType !== UserType.VEHICLE_OWNER) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied. Invalid user type.',
+      });
+    }
+
     res.status(200).json({
       success: true,
       data: {
         id: user._id,
-        badgeNo: user.badgeNo,
-        name: user.name,
-        username: user.username,
+        userType: user.userType,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        middleName: user.middleName,
+        fullName: user.getFullName(),
         email: user.email,
         contactNo: user.contactNo,
         address: user.address,
-        position: user.position,
-        role: user.role,
+        bday: user.bday,
+        nationality: user.nationality,
+        licenseNo: user.licenseNo,
         status: user.status,
         profilePic: user.profilePic,
+        vehicles: user.vehicles, // Populated vehicle data
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
       },
     });
   } catch (error: any) {
