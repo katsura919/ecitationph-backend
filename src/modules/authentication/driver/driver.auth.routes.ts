@@ -13,7 +13,7 @@ const router = Router();
 // @access  Private (Admin only)
 router.post(
   '/register',
-  strictLimiter,
+  //strictLimiter,
   //authenticate,
   //authorize(UserType.DRIVER),
   validate([

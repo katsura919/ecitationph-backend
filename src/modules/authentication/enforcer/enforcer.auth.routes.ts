@@ -13,7 +13,7 @@ const router = Router();
 // @access  Public
 router.post(
   '/register',
-  strictLimiter,
+  //strictLimiter,
   validate([
     body('userType')
       .optional()
@@ -95,7 +95,7 @@ router.post(
 // @access  Public
 router.post(
   '/login',
-  strictLimiter,
+  //strictLimiter,
   validate([
     body('username')
       .trim()
