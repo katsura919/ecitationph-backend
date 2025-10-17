@@ -133,7 +133,7 @@ export const login = async (req: Request, res: Response) => {
         { licenseNo: licenseNo.toUpperCase() },
         { email: licenseNo.toLowerCase() }
       ],
-      userType: UserType.DRIVER, // Only drivers can login here
+      userType: UserType.DRIVER, // Only drivers (validated by middleware)
     }).select('+password');
 
     if (!user) {

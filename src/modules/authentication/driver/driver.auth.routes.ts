@@ -2,7 +2,8 @@ import { Router } from 'express';
 import { body } from 'express-validator';
 import { validate } from '../../../middleware/validator';
 import { strictLimiter } from '../../../middleware/rateLimiter';
-import { authenticate } from '../../../middleware/auth.middleware';
+import { authenticate, validateLoginUserType } from '../../../middleware/auth.middleware';
+import { UserType } from '../../../models/user.model';
 import * as authController from './driver.auth.controller';
 
 const router = Router();
@@ -114,12 +115,13 @@ router.post(
       .notEmpty()
       .withMessage('Password is required'),
   ]),
+  validateLoginUserType(UserType.DRIVER),
   authController.login
 );
 
 // @route   GET /api/auth/driver/me
 // @desc    Get current logged in driver
-// @access  Private
+// @access  Private (Driver only)
 router.get('/me', authenticate, authController.getMe);
 
 export default router;

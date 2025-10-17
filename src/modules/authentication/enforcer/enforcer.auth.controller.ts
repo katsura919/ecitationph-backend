@@ -135,7 +135,7 @@ export const login = async (req: Request, res: Response) => {
     // Find enforcer/admin by username or email
     const user = await User.findOne({
       $or: [{ username }, { email: username }],
-      userType: { $in: [UserType.ADMIN, UserType.ENFORCER] }, // Only enforcer/admin can login here
+      userType: { $in: [UserType.ADMIN, UserType.ENFORCER] }, // Only enforcer/admin (validated by middleware)
     }).select('+password');
 
     if (!user) {

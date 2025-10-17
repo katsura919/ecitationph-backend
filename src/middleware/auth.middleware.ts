@@ -69,69 +69,84 @@ export const authenticate = async (
   }
 };
 
-/**
- * Authorization middleware - Check user type
- * Compares the allowed user types with the user's userType from token
- * 
- * Usage:
- * router.get('/admin-only', authenticate, authorize(UserType.ADMIN), controller)
- * router.post('/citations', authenticate, authorize(UserType.ADMIN, UserType.ENFORCER), controller)
- */
-export const authorize = (...allowedUserTypes: UserType[]) => {
-  return (req: Request, res: Response, next: NextFunction) => {
-    if (!req.user) {
-      return res.status(401).json({
-        success: false,
-        error: 'Not authenticated.',
-      });
-    }
-
-    // Check if user's type is in allowed types
-    if (!allowedUserTypes.includes(req.user.userType)) {
-      return res.status(403).json({
-        success: false,
-        error: 'Access denied. Insufficient permissions.',
-      });
-    }
-
-    next();
-  };
-};
 
 /**
- * Role authorization middleware - Check enforcer role
- * Compares the allowed roles with the user's role from token
- * Only works for ADMIN and ENFORCER user types
+ * Login validation middleware - Check if user exists and has correct user type
+ * This runs BEFORE authentication in login routes to validate user type
+ * 
+ * @param allowedUserType - The user type allowed for this login endpoint
  * 
  * Usage:
- * router.delete('/users/:id', authenticate, authorizeRole(EnforcerRole.ADMIN), controller)
- * router.post('/approve', authenticate, authorizeRole(EnforcerRole.ADMIN, EnforcerRole.OFFICER), controller)
+ * router.post('/login', validateLoginUserType(UserType.DRIVER), controller)
  */
-export const authorizeRole = (...allowedRoles: EnforcerRole[]) => {
-  return (req: Request, res: Response, next: NextFunction) => {
-    if (!req.user) {
-      return res.status(401).json({
-        success: false,
-        error: 'Not authenticated.',
-      });
-    }
+export const validateLoginUserType = (allowedUserType: UserType) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      // Get identifier from request body (different for each user type)
+      const { username, email, licenseNo } = req.body;
 
-    // Check if user is enforcer/admin
-    if (req.user.userType !== UserType.ADMIN && req.user.userType !== UserType.ENFORCER) {
-      return res.status(403).json({
-        success: false,
-        error: 'Access denied. Enforcer/Admin only.',
-      });
-    }
+      let user;
 
-    // Check if user's role is in allowed roles
-    if (!allowedRoles.includes(req.user.role)) {
-      return res.status(403).json({
-        success: false,
-        error: 'Access denied. Insufficient role permissions.',
-      });
-    }
+      // Find user based on user type
+      if (allowedUserType === UserType.DRIVER) {
+        // Driver uses licenseNo or email
+        if (!licenseNo) {
+          return next(); // Let controller handle missing field
+        }
+        user = await User.findOne({
+          $or: [
+            { licenseNo: licenseNo.toUpperCase() },
+            { email: licenseNo.toLowerCase() }
+          ],
+        }).select('userType');
+      } else if (allowedUserType === UserType.VEHICLE_OWNER) {
+        // Vehicle owner uses email
+        if (!email) {
+          return next(); // Let controller handle missing field
+        }
+        user = await User.findOne({
+          email: email.toLowerCase(),
+        }).select('userType');
+      } else if (allowedUserType === UserType.ADMIN || allowedUserType === UserType.ENFORCER) {
+        // Enforcer/Admin uses username or email
+        if (!username) {
+          return next(); // Let controller handle missing field
+        }
+        user = await User.findOne({
+          $or: [{ username }, { email: username }],
+        }).select('userType');
+      }
 
-    next();
+      // If user not found, let controller handle it (will return invalid credentials)
+      if (!user) {
+        return next();
+      }
+
+      // Check if user type matches
+      if (allowedUserType === UserType.ADMIN || allowedUserType === UserType.ENFORCER) {
+        // For enforcer/admin endpoints, allow both types
+        if (user.userType !== UserType.ADMIN && user.userType !== UserType.ENFORCER) {
+          return res.status(403).json({
+            success: false,
+            error: 'Access denied. This login is for enforcers/admins only. Please use the correct login endpoint for your account type.',
+          });
+        }
+      } else {
+        // For other user types, must match exactly
+        if (user.userType !== allowedUserType) {
+          const userTypeLabel = allowedUserType === UserType.DRIVER ? 'drivers' : 'vehicle owners';
+          return res.status(403).json({
+            success: false,
+            error: `Access denied. This login is for ${userTypeLabel} only. Please use the correct login endpoint for your account type.`,
+          });
+        }
+      }
+
+      // User type is valid, continue to controller
+      next();
+    } catch (error) {
+      // On error, let controller handle it
+      next();
+    }
   };
 };

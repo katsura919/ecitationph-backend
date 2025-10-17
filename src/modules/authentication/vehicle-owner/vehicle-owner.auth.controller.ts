@@ -132,7 +132,7 @@ export const login = async (req: Request, res: Response) => {
     // Find vehicle owner by email
     const user = await User.findOne({
       email: email.toLowerCase(),
-      userType: UserType.VEHICLE_OWNER, // Only vehicle owners can login here
+      userType: UserType.VEHICLE_OWNER, // Only vehicle owners (validated by middleware)
     }).select('+password');
 
     if (!user) {
