@@ -2,23 +2,26 @@ import { Router } from 'express';
 import { body } from 'express-validator';
 import { validate } from '../../../middleware/validator';
 import { strictLimiter } from '../../../middleware/rateLimiter';
-import { authenticate, validateLoginUserType } from '../../../middleware/auth.middleware';
+import { authenticate, authorize, validateLoginUserType } from '../../../middleware/auth.middleware';
 import { UserType } from '../../../models/user.model';
-import * as authController from './enforcer.auth.controller';
+import * as authController from './admin.auth.controller';
 
 const router = Router();
 
-// @route   POST /api/auth/enforcer/register
-// @desc    Register new officer/treasurer
-// @access  Public
+// @route   POST /api/auth/admin/register
+// @desc    Register new admin/officer/treasurer
+// @access  Private (Admin only)
 router.post(
   '/register',
   strictLimiter,
+  authenticate,
+  authorize(UserType.ADMIN),
   validate([
     body('userType')
-      .optional()
-      .isIn(['officer', 'treasurer'])
-      .withMessage('User type must be officer or treasurer'),
+      .notEmpty()
+      .withMessage('User type is required')
+      .isIn(['admin', 'officer', 'treasurer'])
+      .withMessage('User type must be admin, officer, or treasurer'),
     body('badgeNo')
       .trim()
       .notEmpty()
@@ -90,8 +93,8 @@ router.post(
   authController.register
 );
 
-// @route   POST /api/auth/enforcer/login
-// @desc    Login staff (admin/officer/treasurer)
+// @route   POST /api/auth/admin/login
+// @desc    Login admin/officer/treasurer
 // @access  Public
 router.post(
   '/login',
@@ -105,12 +108,12 @@ router.post(
       .notEmpty()
       .withMessage('Password is required'),
   ]),
-  validateLoginUserType(UserType.OFFICER),
+  validateLoginUserType(UserType.ADMIN),
   authController.login
 );
 
-// @route   GET /api/auth/enforcer/me
-// @desc    Get current logged in staff member
+// @route   GET /api/auth/admin/me
+// @desc    Get current logged in admin/officer/treasurer
 // @access  Private (Staff only)
 router.get('/me', authenticate, authController.getMe);
 

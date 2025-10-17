@@ -2,11 +2,12 @@ import mongoose, { Schema, Document } from 'mongoose';
 import bcrypt from 'bcryptjs';
 
 /**
- * User Types - Discriminator for different user roles
+ * User Types - All user roles in the system
  */
 export enum UserType {
   ADMIN = 'admin',
-  ENFORCER = 'enforcer',
+  OFFICER = 'officer',
+  TREASURER = 'treasurer',
   DRIVER = 'driver',
   VEHICLE_OWNER = 'vehicle_owner'
 }
@@ -18,15 +19,6 @@ export enum UserStatus {
   ACTIVE = 'active',
   INACTIVE = 'inactive',
   SUSPENDED = 'suspended'
-}
-
-/**
- * Enforcer Roles
- */
-export enum EnforcerRole {
-  ADMIN = 'Admin',
-  OFFICER = 'Officer',
-  TREASURER = 'Treasurer'
 }
 
 /**
@@ -48,11 +40,10 @@ export interface IUser extends Document {
   profilePic?: string;
   
   // Type-specific fields (optional based on userType)
-  // Admin/Enforcer fields
+  // Admin/Officer/Treasurer fields
   badgeNo?: string;
   name?: string;
   username?: string;
-  role?: EnforcerRole;
   
   // Driver/Vehicle Owner fields
   licenseNo?: string;
@@ -72,14 +63,13 @@ export interface IUser extends Document {
 }
 
 /**
- * Admin/Enforcer specific interface
+ * Admin/Officer/Treasurer specific interface
  */
 export interface IEnforcer extends IUser {
-  userType: UserType.ADMIN | UserType.ENFORCER;
+  userType: UserType.ADMIN | UserType.OFFICER | UserType.TREASURER;
   badgeNo: string;
   name: string;
   username: string;
-  role: EnforcerRole;
 }
 
 /**
@@ -216,13 +206,6 @@ const UserSchema: Schema = new Schema(
       maxlength: [50, 'Username must not exceed 50 characters'],
       index: true,
     },
-    role: {
-      type: String,
-      enum: {
-        values: Object.values(EnforcerRole),
-        message: '{VALUE} is not a valid role',
-      },
-    },
     
     // Driver/Vehicle Owner specific fields (optional)
     licenseNo: {
@@ -281,19 +264,16 @@ UserSchema.index({ email: 1, userType: 1 });
 UserSchema.pre('save', function (next) {
   const user = this;
   
-  // Validate Admin/Enforcer required fields
-  if (user.userType === UserType.ADMIN || user.userType === UserType.ENFORCER) {
+  // Validate Admin/Officer/Treasurer required fields
+  if (user.userType === UserType.ADMIN || user.userType === UserType.OFFICER || user.userType === UserType.TREASURER) {
     if (!user.badgeNo) {
-      return next(new Error('Badge number is required for admin/enforcer'));
+      return next(new Error('Badge number is required for admin/officer/treasurer'));
     }
     if (!user.name) {
-      return next(new Error('Name is required for admin/enforcer'));
+      return next(new Error('Name is required for admin/officer/treasurer'));
     }
     if (!user.username) {
-      return next(new Error('Username is required for admin/enforcer'));
-    }
-    if (!user.role) {
-      return next(new Error('Role is required for admin/enforcer'));
+      return next(new Error('Username is required for admin/officer/treasurer'));
     }
   }
   
@@ -359,7 +339,7 @@ UserSchema.methods.comparePassword = async function (
  * Returns formatted name based on user type
  */
 UserSchema.methods.getFullName = function (): string {
-  if (this.userType === UserType.ADMIN || this.userType === UserType.ENFORCER) {
+  if (this.userType === UserType.ADMIN || this.userType === UserType.OFFICER || this.userType === UserType.TREASURER) {
     return this.name || '';
   }
   
@@ -380,12 +360,12 @@ UserSchema.statics.findByType = function (userType: UserType, status?: UserStatu
 };
 
 /**
- * Static method: Find enforcer by badge number
+ * Static method: Find staff by badge number (Admin/Officer/Treasurer)
  */
 UserSchema.statics.findByBadgeNo = function (badgeNo: string) {
   return this.findOne({ 
     badgeNo, 
-    userType: { $in: [UserType.ADMIN, UserType.ENFORCER] } 
+    userType: { $in: [UserType.ADMIN, UserType.OFFICER, UserType.TREASURER] } 
   });
 };
 

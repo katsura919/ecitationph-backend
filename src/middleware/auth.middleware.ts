@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import User, { UserType, EnforcerRole, UserStatus } from '../models/user.model';
+import User, { UserType, UserStatus } from '../models/user.model';
 
 // Extend Express Request to include user
 declare global {
@@ -78,7 +78,7 @@ export const authenticate = async (
  * 
  * Usage:
  * router.post('/register', authenticate, authorize(UserType.ADMIN), controller)
- * router.get('/data', authenticate, authorize(UserType.ADMIN, UserType.ENFORCER), controller)
+ * router.get('/data', authenticate, authorize(UserType.ADMIN, UserType.OFFICER), controller)
  */
 export const authorize = (...allowedUserTypes: UserType[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
@@ -139,8 +139,8 @@ export const validateLoginUserType = (allowedUserType: UserType) => {
         user = await User.findOne({
           email: email.toLowerCase(),
         }).select('userType');
-      } else if (allowedUserType === UserType.ADMIN || allowedUserType === UserType.ENFORCER) {
-        // Enforcer/Admin uses username or email
+      } else if (allowedUserType === UserType.ADMIN || allowedUserType === UserType.OFFICER || allowedUserType === UserType.TREASURER) {
+        // Staff (Admin/Officer/Treasurer) uses username or email
         if (!username) {
           return next(); // Let controller handle missing field
         }
@@ -155,12 +155,13 @@ export const validateLoginUserType = (allowedUserType: UserType) => {
       }
 
       // Check if user type matches
-      if (allowedUserType === UserType.ADMIN || allowedUserType === UserType.ENFORCER) {
-        // For enforcer/admin endpoints, allow both types
-        if (user.userType !== UserType.ADMIN && user.userType !== UserType.ENFORCER) {
+      const staffTypes = [UserType.ADMIN, UserType.OFFICER, UserType.TREASURER];
+      if (staffTypes.includes(allowedUserType)) {
+        // For staff endpoints, allow all staff types
+        if (!staffTypes.includes(user.userType)) {
           return res.status(403).json({
             success: false,
-            error: 'Access denied. This login is for enforcers/admins only. Please use the correct login endpoint for your account type.',
+            error: 'Access denied. This login is for staff members only. Please use the correct login endpoint for your account type.',
           });
         }
       } else {

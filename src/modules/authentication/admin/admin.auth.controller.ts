@@ -11,9 +11,9 @@ const generateToken = (userId: string): string => {
   );
 };
 
-// @desc    Register new officer/treasurer
-// @route   POST /api/auth/enforcer/register
-// @access  Public
+// @desc    Register new admin/officer/treasurer
+// @route   POST /api/auth/admin/register
+// @access  Private (Admin only)
 export const register = async (req: Request, res: Response) => {
   try {
     const {
@@ -26,11 +26,11 @@ export const register = async (req: Request, res: Response) => {
       address,
       status,
       profilePic,
-      userType, // Can be 'officer' or 'treasurer'
+      userType, // Can be 'admin', 'officer', or 'treasurer'
     } = req.body;
 
-    // Validate userType - only officer and treasurer allowed (admin uses different endpoint)
-    const validUserTypes = [UserType.OFFICER, UserType.TREASURER];
+    // Validate userType - must be one of the staff types
+    const validUserTypes = [UserType.ADMIN, UserType.OFFICER, UserType.TREASURER];
     const finalUserType = validUserTypes.includes(userType) ? userType : UserType.OFFICER;
 
     // Check if user already exists
@@ -59,7 +59,7 @@ export const register = async (req: Request, res: Response) => {
       }
     }
 
-    // Create new officer/treasurer user
+    // Create new admin/officer/treasurer user
     const user = await User.create({
       userType: finalUserType,
       badgeNo,
@@ -115,8 +115,8 @@ export const register = async (req: Request, res: Response) => {
   }
 };
 
-// @desc    Login officer/treasurer/admin
-// @route   POST /api/auth/enforcer/login
+// @desc    Login admin/officer/treasurer
+// @route   POST /api/auth/admin/login
 // @access  Public
 export const login = async (req: Request, res: Response) => {
   try {
@@ -130,10 +130,10 @@ export const login = async (req: Request, res: Response) => {
       });
     }
 
-    // Find staff by username or email (all staff types)
+    // Find admin/officer/treasurer by username or email
     const user = await User.findOne({
       $or: [{ username }, { email: username }],
-      userType: { $in: [UserType.ADMIN, UserType.OFFICER, UserType.TREASURER] }, 
+      userType: { $in: [UserType.ADMIN, UserType.OFFICER, UserType.TREASURER] },
     }).select('+password');
 
     if (!user) {
@@ -187,8 +187,8 @@ export const login = async (req: Request, res: Response) => {
   }
 };
 
-// @desc    Get current logged in staff member
-// @route   GET /api/auth/enforcer/me
+// @desc    Get current logged in admin/officer/treasurer
+// @route   GET /api/auth/admin/me
 // @access  Private
 export const getMe = async (req: Request, res: Response) => {
   try {
@@ -202,7 +202,7 @@ export const getMe = async (req: Request, res: Response) => {
       });
     }
 
-    // Verify user is staff (admin/officer/treasurer)
+    // Verify user is admin/officer/treasurer
     if (user.userType !== UserType.ADMIN && user.userType !== UserType.OFFICER && user.userType !== UserType.TREASURER) {
       return res.status(403).json({
         success: false,
