@@ -326,7 +326,6 @@ const CitationSchema = new Schema<ICitation, ICitationModel>(
 );
 
 // Indexes for efficient querying
-CitationSchema.index({ citationNo: 1 });
 CitationSchema.index({ driverId: 1 });
 CitationSchema.index({ 'vehicleInfo.plateNo': 1 });
 CitationSchema.index({ issuedBy: 1 });
