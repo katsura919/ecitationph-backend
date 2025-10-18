@@ -1,4 +1,4 @@
-import mongoose, { Document, Schema } from 'mongoose';
+import mongoose, { Document, Schema, Model } from 'mongoose';
 
 /**
  * Vehicle Type for fine calculation
@@ -84,9 +84,22 @@ export interface IViolation extends Document {
   createdBy?: mongoose.Types.ObjectId; // Admin who created this version
   createdAt: Date;
   updatedAt: Date;
+
+  // Instance methods
+  createNewVersion(updates: Partial<IViolation>, createdBy?: mongoose.Types.ObjectId): Promise<IViolation>;
+  softDelete(): Promise<IViolation>;
 }
 
-const ViolationSchema = new Schema<IViolation>(
+/**
+ * Violation Model Interface with Static Methods
+ */
+export interface IViolationModel extends Model<IViolation> {
+  getCurrentByCode(code: string): Promise<IViolation | null>;
+  getAllActive(): Promise<IViolation[]>;
+  getHistory(violationGroupId: string): Promise<IViolation[]>;
+}
+
+const ViolationSchema = new Schema<IViolation, IViolationModel>(
   {
     code: {
       type: String,
@@ -317,6 +330,6 @@ ViolationSchema.methods.softDelete = async function() {
   return this;
 };
 
-const Violation = mongoose.model<IViolation>('Violation', ViolationSchema);
+const Violation = mongoose.model<IViolation, IViolationModel>('Violation', ViolationSchema);
 
 export default Violation;

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import authAdminRoutes from '../modules/authentication/admin/admin.auth.routes';
 import authEnforcerRoutes from '../modules/authentication/enforcer/enforcer.auth.routes';
 import authDriverRoutes from '../modules/authentication/driver/driver.auth.routes';
+import violationsRoutes from '../modules/violations/violations.routes';
 
 const router = Router();
 
@@ -9,5 +10,6 @@ const router = Router();
 router.use('/auth/admin', authAdminRoutes);
 router.use('/auth/enforcer', authEnforcerRoutes);
 router.use('/auth/driver', authDriverRoutes);
+router.use('/violations', violationsRoutes);
 
 export default router;
