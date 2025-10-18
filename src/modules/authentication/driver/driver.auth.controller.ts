@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
-import User, { UserType, UserStatus } from '../../../models/user.model';
+import Driver, { DriverStatus } from '../../../models/driver.model';
 
 // Generate JWT Token
 const generateToken = (userId: string): string => {
@@ -25,24 +25,33 @@ export const register = async (req: Request, res: Response) => {
       password,
       contactNo,
       address,
-      bday,
+      birthDate,
       nationality,
-      profilePic,
+      sex,
+      weight,
+      height,
+      expirationDate,
+      agencyCode,
+      bloodType,
+      conditions,
+      eyesColor,
+      diCodes,
+      picture,
     } = req.body;
 
     // Check if driver already exists
-    const existingUser = await User.findOne({
+    const existingDriver = await Driver.findOne({
       $or: [{ email }, { licenseNo: licenseNo.toUpperCase() }],
     });
 
-    if (existingUser) {
-      if (existingUser.email === email) {
+    if (existingDriver) {
+      if (existingDriver.email === email) {
         return res.status(400).json({
           success: false,
           error: 'Email already registered',
         });
       }
-      if (existingUser.licenseNo === licenseNo.toUpperCase()) {
+      if (existingDriver.licenseNo === licenseNo.toUpperCase()) {
         return res.status(400).json({
           success: false,
           error: 'License number already exists',
@@ -50,9 +59,8 @@ export const register = async (req: Request, res: Response) => {
       }
     }
 
-    // Create new driver user
-    const user = await User.create({
-      userType: UserType.DRIVER,
+    // Create new driver
+    const driver = await Driver.create({
       licenseNo,
       firstName,
       lastName,
@@ -61,34 +69,55 @@ export const register = async (req: Request, res: Response) => {
       password,
       contactNo,
       address,
-      bday: new Date(bday),
+      birthDate: new Date(birthDate),
       nationality,
-      status: UserStatus.ACTIVE,
-      profilePic,
+      sex,
+      weight,
+      height,
+      expirationDate: new Date(expirationDate),
+      agencyCode,
+      bloodType,
+      conditions,
+      eyesColor,
+      diCodes,
+      picture,
+      status: DriverStatus.ACTIVE,
     });
 
     // Generate token
-    const token = generateToken((user._id as any).toString());
+    const token = generateToken((driver._id as any).toString());
 
-    // Return user data without password
+    // Return driver data without password
     res.status(201).json({
       success: true,
       message: 'Driver registered successfully',
       data: {
-        user: {
-          id: user._id,
-          userType: user.userType,
-          licenseNo: user.licenseNo,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          middleName: user.middleName,
-          email: user.email,
-          contactNo: user.contactNo,
-          address: user.address,
-          bday: user.bday,
-          nationality: user.nationality,
-          status: user.status,
-          profilePic: user.profilePic,
+        driver: {
+          id: driver._id,
+          driverID: driver.driverID,
+          licenseNo: driver.licenseNo,
+          firstName: driver.firstName,
+          lastName: driver.lastName,
+          middleName: driver.middleName,
+          fullName: driver.getFullName(),
+          email: driver.email,
+          contactNo: driver.contactNo,
+          address: driver.address,
+          birthDate: driver.birthDate,
+          age: driver.getAge(),
+          nationality: driver.nationality,
+          sex: driver.sex,
+          weight: driver.weight,
+          height: driver.height,
+          expirationDate: driver.expirationDate,
+          isLicenseExpired: driver.isLicenseExpired(),
+          agencyCode: driver.agencyCode,
+          bloodType: driver.bloodType,
+          conditions: driver.conditions,
+          eyesColor: driver.eyesColor,
+          diCodes: driver.diCodes,
+          picture: driver.picture,
+          status: driver.status,
         },
         token,
       },
@@ -128,38 +157,44 @@ export const login = async (req: Request, res: Response) => {
     }
 
     // Find driver by license number or email
-    const user = await User.findOne({
+    const driver = await Driver.findOne({
       $or: [
         { licenseNo: licenseNo.toUpperCase() },
         { email: licenseNo.toLowerCase() }
       ],
-      userType: UserType.DRIVER, // Only drivers (validated by middleware)
     }).select('+password');
 
-    if (!user) {
+    if (!driver) {
       return res.status(401).json({
         success: false,
         error: 'Invalid credentials',
       });
     }
 
-    // Check if user is inactive or suspended
-    if (user.status === UserStatus.INACTIVE) {
+    // Check if driver is inactive or suspended
+    if (driver.status === DriverStatus.INACTIVE) {
       return res.status(403).json({
         success: false,
         error: 'Account is inactive. Please contact administrator.',
       });
     }
 
-    if (user.status === UserStatus.SUSPENDED) {
+    if (driver.status === DriverStatus.SUSPENDED) {
       return res.status(403).json({
         success: false,
         error: 'Account is suspended. Please contact administrator.',
       });
     }
 
+    if (driver.status === DriverStatus.EXPIRED) {
+      return res.status(403).json({
+        success: false,
+        error: 'License has expired. Please renew your license.',
+      });
+    }
+
     // Check password
-    const isPasswordMatch = await user.comparePassword(password);
+    const isPasswordMatch = await driver.comparePassword(password);
 
     if (!isPasswordMatch) {
       return res.status(401).json({
@@ -169,7 +204,7 @@ export const login = async (req: Request, res: Response) => {
     }
 
     // Generate token
-    const token = generateToken((user._id as any).toString());
+    const token = generateToken((driver._id as any).toString());
 
     res.status(200).json({
       success: true,
@@ -192,43 +227,46 @@ export const login = async (req: Request, res: Response) => {
 // @access  Private
 export const getMe = async (req: Request, res: Response) => {
   try {
-    // User is already attached to req by auth middleware
-    const user = await User.findById((req as any).user.id);
+    // Driver is already attached to req by auth middleware
+    const driver = await Driver.findById((req as any).user.id);
 
-    if (!user) {
+    if (!driver) {
       return res.status(404).json({
         success: false,
-        error: 'User not found',
-      });
-    }
-
-    // Verify user is a driver
-    if (user.userType !== UserType.DRIVER) {
-      return res.status(403).json({
-        success: false,
-        error: 'Access denied. Invalid user type.',
+        error: 'Driver not found',
       });
     }
 
     res.status(200).json({
       success: true,
       data: {
-        id: user._id,
-        userType: user.userType,
-        licenseNo: user.licenseNo,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        middleName: user.middleName,
-        fullName: user.getFullName(),
-        email: user.email,
-        contactNo: user.contactNo,
-        address: user.address,
-        bday: user.bday,
-        nationality: user.nationality,
-        status: user.status,
-        profilePic: user.profilePic,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
+        id: driver._id,
+        driverID: driver.driverID,
+        licenseNo: driver.licenseNo,
+        firstName: driver.firstName,
+        lastName: driver.lastName,
+        middleName: driver.middleName,
+        fullName: driver.getFullName(),
+        email: driver.email,
+        contactNo: driver.contactNo,
+        address: driver.address,
+        birthDate: driver.birthDate,
+        age: driver.getAge(),
+        nationality: driver.nationality,
+        sex: driver.sex,
+        weight: driver.weight,
+        height: driver.height,
+        expirationDate: driver.expirationDate,
+        isLicenseExpired: driver.isLicenseExpired(),
+        agencyCode: driver.agencyCode,
+        bloodType: driver.bloodType,
+        conditions: driver.conditions,
+        eyesColor: driver.eyesColor,
+        diCodes: driver.diCodes,
+        picture: driver.picture,
+        status: driver.status,
+        createdAt: driver.createdAt,
+        updatedAt: driver.updatedAt,
       },
     });
   } catch (error: any) {

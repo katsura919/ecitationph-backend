@@ -2,30 +2,27 @@ import mongoose, { Schema, Document } from 'mongoose';
 import bcrypt from 'bcryptjs';
 
 /**
- * User Types - Admin and Treasurer only
+ * Enforcer Status
  */
-export enum UserType {
-  ADMIN = 'admin',
-  TREASURER = 'treasurer'
-}
-
-/**
- * User Status
- */
-export enum UserStatus {
+export enum EnforcerStatus {
   ACTIVE = 'active',
   INACTIVE = 'inactive',
   SUSPENDED = 'suspended'
 }
 
 /**
- * Base User Interface - For Admin/Treasurer only
+ * Enforcer Interface (Officers)
  */
-export interface IUser extends Document {
-  userType: UserType;
+export interface IEnforcer extends Document {
+  enforcerID: string; // Unique enforcer identifier
+  badgeNo: string;
+  name: string;
+  username: string;
   email: string;
   password: string;
   contactNo: string;
+  
+  // Address breakdown
   address: {
     street: string;
     barangay: string;
@@ -33,43 +30,51 @@ export interface IUser extends Document {
     province: string;
     postalCode: string;
   };
-  status: UserStatus;
-  profilePic?: string;
   
-  // User specific fields
-  badgeNo: string;
-  name: string;
-  username: string;
+  profilePic?: string;
+  status: EnforcerStatus;
   
   createdAt: Date;
   updatedAt: Date;
+  
+  // Methods
   comparePassword(candidatePassword: string): Promise<boolean>;
   getFullName(): string;
 }
 
 /**
- * Admin/Treasurer specific interface (alias for IUser)
+ * Enforcer Schema
  */
-export interface IAdmin extends IUser {
-  userType: UserType.ADMIN | UserType.TREASURER;
-}
-
-/**
- * Base User Schema - Contains common fields for all user types
- */
-const UserSchema: Schema = new Schema(
+const EnforcerSchema: Schema = new Schema(
   {
-    userType: {
+    enforcerID: {
       type: String,
-      required: [true, 'User type is required'],
-      enum: {
-        values: Object.values(UserType),
-        message: '{VALUE} is not a valid user type',
-      },
-      index: true,
+      required: [true, 'Enforcer ID is required'],
+      unique: true,
+      trim: true,
+      uppercase: true,
     },
-    
-    // Common fields for all user types
+    badgeNo: {
+      type: String,
+      required: [true, 'Badge number is required'],
+      unique: true,
+      trim: true,
+    },
+    name: {
+      type: String,
+      required: [true, 'Name is required'],
+      trim: true,
+      minlength: [2, 'Name must be at least 2 characters'],
+      maxlength: [100, 'Name must not exceed 100 characters'],
+    },
+    username: {
+      type: String,
+      required: [true, 'Username is required'],
+      unique: true,
+      trim: true,
+      minlength: [3, 'Username must be at least 3 characters'],
+      maxlength: [50, 'Username must not exceed 50 characters'],
+    },
     email: {
       type: String,
       required: [true, 'Email is required'],
@@ -90,6 +95,8 @@ const UserSchema: Schema = new Schema(
       trim: true,
       match: [/^[0-9]{11}$/, 'Please provide a valid 11-digit contact number'],
     },
+    
+    // Address breakdown
     address: {
       street: {
         type: String,
@@ -122,47 +129,24 @@ const UserSchema: Schema = new Schema(
         match: [/^[0-9]{4}$/, 'Please provide a valid 4-digit postal code'],
       },
     },
-    status: {
-      type: String,
-      required: [true, 'Status is required'],
-      enum: {
-        values: Object.values(UserStatus),
-        message: '{VALUE} is not a valid status',
-      },
-      default: UserStatus.ACTIVE,
-      index: true,
-    },
+    
     profilePic: {
       type: String,
       default: null,
     },
     
-    // User specific fields (required)
-    badgeNo: {
+    status: {
       type: String,
-      required: [true, 'Badge number is required'],
-      unique: true,
-      trim: true,
-    },
-    name: {
-      type: String,
-      required: [true, 'Name is required'],
-      trim: true,
-      minlength: [2, 'Name must be at least 2 characters'],
-      maxlength: [100, 'Name must not exceed 100 characters'],
-    },
-    username: {
-      type: String,
-      required: [true, 'Username is required'],
-      unique: true,
-      trim: true,
-      minlength: [3, 'Username must be at least 3 characters'],
-      maxlength: [50, 'Username must not exceed 50 characters'],
+      required: [true, 'Status is required'],
+      enum: {
+        values: Object.values(EnforcerStatus),
+        message: '{VALUE} is not a valid status',
+      },
+      default: EnforcerStatus.ACTIVE,
     },
   },
   {
     timestamps: true, // Automatically adds createdAt and updatedAt
-    discriminatorKey: 'userType', // Uses userType field for discrimination
   }
 );
 
@@ -171,7 +155,7 @@ const UserSchema: Schema = new Schema(
 /**
  * Hash password before saving
  */
-UserSchema.pre<IUser>('save', async function (next) {
+EnforcerSchema.pre<IEnforcer>('save', async function (next) {
   // Only hash the password if it has been modified (or is new)
   if (!this.isModified('password')) {
     return next();
@@ -187,9 +171,23 @@ UserSchema.pre<IUser>('save', async function (next) {
 });
 
 /**
+ * Auto-generate enforcerID if not provided
+ */
+EnforcerSchema.pre<IEnforcer>('save', async function (next) {
+  if (!this.enforcerID) {
+    // Generate a unique enforcer ID (e.g., ENF-YYYYMMDD-XXXX)
+    const date = new Date();
+    const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+    const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+    this.enforcerID = `ENF-${dateStr}-${random}`;
+  }
+  next();
+});
+
+/**
  * Method to compare password
  */
-UserSchema.methods.comparePassword = async function (
+EnforcerSchema.methods.comparePassword = async function (
   candidatePassword: string
 ): Promise<boolean> {
   try {
@@ -202,36 +200,32 @@ UserSchema.methods.comparePassword = async function (
 /**
  * Method to get full name
  */
-UserSchema.methods.getFullName = function (): string {
+EnforcerSchema.methods.getFullName = function (): string {
   return this.name || '';
 };
 
 /**
- * Static method: Find users by type
+ * Static method: Find enforcer by badge number
  */
-UserSchema.statics.findByType = function (userType: UserType, status?: UserStatus) {
-  const query: any = { userType };
-  if (status) {
-    query.status = status;
-  }
-  return this.find(query);
-};
-
-/**
- * Static method: Find user by badge number
- */
-UserSchema.statics.findByBadgeNo = function (badgeNo: string) {
+EnforcerSchema.statics.findByBadgeNo = function (badgeNo: string) {
   return this.findOne({ badgeNo });
 };
 
 /**
- * Static method: Find user by username
+ * Static method: Find enforcer by username
  */
-UserSchema.statics.findByUsername = function (username: string) {
+EnforcerSchema.statics.findByUsername = function (username: string) {
   return this.findOne({ username });
 };
 
-// Export the base model
-const User = mongoose.model<IUser>('User', UserSchema);
+/**
+ * Static method: Find active enforcers
+ */
+EnforcerSchema.statics.findActiveEnforcers = function () {
+  return this.find({ status: EnforcerStatus.ACTIVE });
+};
 
-export default User;
+// Export the model
+const Enforcer = mongoose.model<IEnforcer>('Enforcer', EnforcerSchema);
+
+export default Enforcer;

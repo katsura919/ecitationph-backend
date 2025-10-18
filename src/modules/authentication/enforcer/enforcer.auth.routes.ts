@@ -2,23 +2,18 @@ import { Router } from 'express';
 import { body } from 'express-validator';
 import { validate } from '../../../middleware/validator';
 import { strictLimiter } from '../../../middleware/rateLimiter';
-import { authenticate, validateLoginUserType } from '../../../middleware/auth.middleware';
-import { UserType } from '../../../models/user.model';
+import { authenticate } from '../../../middleware/auth.middleware';
 import * as authController from './enforcer.auth.controller';
 
 const router = Router();
 
 // @route   POST /api/auth/enforcer/register
-// @desc    Register new officer/treasurer
+// @desc    Register new officer
 // @access  Public
 router.post(
   '/register',
   //strictLimiter,
   validate([
-    body('userType')
-      .optional()
-      .isIn(['officer', 'treasurer'])
-      .withMessage('User type must be officer or treasurer'),
     body('badgeNo')
       .trim()
       .notEmpty()
@@ -91,7 +86,7 @@ router.post(
 );
 
 // @route   POST /api/auth/enforcer/login
-// @desc    Login staff (admin/officer/treasurer)
+// @desc    Login officer
 // @access  Public
 router.post(
   '/login',
@@ -105,13 +100,12 @@ router.post(
       .notEmpty()
       .withMessage('Password is required'),
   ]),
-  validateLoginUserType(UserType.OFFICER),
   authController.login
 );
 
 // @route   GET /api/auth/enforcer/me
-// @desc    Get current logged in staff member
-// @access  Private (Staff only)
+// @desc    Get current logged in officer
+// @access  Private (Officer only)
 router.get('/me', authenticate, authController.getMe);
 
 export default router;

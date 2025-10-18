@@ -29,9 +29,9 @@ export const register = async (req: Request, res: Response) => {
       userType, // Can be 'admin', 'officer', or 'treasurer'
     } = req.body;
 
-    // Validate userType - must be one of the staff types
-    const validUserTypes = [UserType.ADMIN, UserType.OFFICER, UserType.TREASURER];
-    const finalUserType = validUserTypes.includes(userType) ? userType : UserType.OFFICER;
+    // Validate userType - must be one of the admin/treasurer types
+    const validUserTypes = [UserType.ADMIN, UserType.TREASURER];
+    const finalUserType = validUserTypes.includes(userType) ? userType : UserType.ADMIN;
 
     // Check if user already exists
     const existingUser = await User.findOne({
@@ -130,10 +130,10 @@ export const login = async (req: Request, res: Response) => {
       });
     }
 
-    // Find admin/officer/treasurer by username or email
+    // Find admin/treasurer by username or email
     const user = await User.findOne({
       $or: [{ username }, { email: username }],
-      userType: { $in: [UserType.ADMIN, UserType.OFFICER, UserType.TREASURER] },
+      userType: { $in: [UserType.ADMIN, UserType.TREASURER] },
     }).select('+password');
 
     if (!user) {
@@ -192,7 +192,7 @@ export const login = async (req: Request, res: Response) => {
 // @access  Private
 export const getMe = async (req: Request, res: Response) => {
   try {
-    // User is already attached to req by auth middleware
+    // User ID is attached to req by auth middleware
     const user = await User.findById((req as any).user.id);
 
     if (!user) {
@@ -202,11 +202,11 @@ export const getMe = async (req: Request, res: Response) => {
       });
     }
 
-    // Verify user is admin/officer/treasurer
-    if (user.userType !== UserType.ADMIN && user.userType !== UserType.OFFICER && user.userType !== UserType.TREASURER) {
+    // Check if user is active
+    if (user.status !== UserStatus.ACTIVE) {
       return res.status(403).json({
         success: false,
-        error: 'Access denied. Invalid user type.',
+        error: `Account is ${user.status}. Please contact administrator.`,
       });
     }
 
@@ -217,6 +217,7 @@ export const getMe = async (req: Request, res: Response) => {
         userType: user.userType,
         badgeNo: user.badgeNo,
         name: user.name,
+        fullName: user.getFullName(),
         username: user.username,
         email: user.email,
         contactNo: user.contactNo,

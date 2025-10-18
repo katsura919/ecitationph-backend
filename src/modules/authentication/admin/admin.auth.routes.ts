@@ -2,8 +2,7 @@ import { Router } from 'express';
 import { body } from 'express-validator';
 import { validate } from '../../../middleware/validator';
 import { strictLimiter } from '../../../middleware/rateLimiter';
-import { authenticate, authorize, validateLoginUserType } from '../../../middleware/auth.middleware';
-import { UserType } from '../../../models/user.model';
+import { authenticate } from '../../../middleware/auth.middleware';
 import * as authController from './admin.auth.controller';
 
 const router = Router();
@@ -20,8 +19,8 @@ router.post(
     body('userType')
       .notEmpty()
       .withMessage('User type is required')
-      .isIn(['admin', 'officer', 'treasurer'])
-      .withMessage('User type must be admin, officer, or treasurer'),
+      .isIn(['admin', 'treasurer'])
+      .withMessage('User type must be admin or treasurer'),
     body('badgeNo')
       .trim()
       .notEmpty()
@@ -108,7 +107,6 @@ router.post(
       .notEmpty()
       .withMessage('Password is required'),
   ]),
-  validateLoginUserType(UserType.ADMIN),
   authController.login
 );
 

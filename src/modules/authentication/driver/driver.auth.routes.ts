@@ -2,8 +2,7 @@ import { Router } from 'express';
 import { body } from 'express-validator';
 import { validate } from '../../../middleware/validator';
 import { strictLimiter } from '../../../middleware/rateLimiter';
-import { authenticate, authorize, validateLoginUserType } from '../../../middleware/auth.middleware';
-import { UserType } from '../../../models/user.model';
+import { authenticate } from '../../../middleware/auth.middleware';
 import * as authController from './driver.auth.controller';
 
 const router = Router();
@@ -15,7 +14,7 @@ router.post(
   '/register',
   //strictLimiter,
   //authenticate,
-  //authorize(UserType.DRIVER),
+  //authorize(UserType.ADMIN),
   validate([
     body('licenseNo')
       .trim()
@@ -87,9 +86,9 @@ router.post(
       .withMessage('Postal code is required')
       .matches(/^[0-9]{4}$/)
       .withMessage('Postal code must be 4 digits'),
-    body('bday')
+    body('birthDate')
       .notEmpty()
-      .withMessage('Birthday is required')
+      .withMessage('Birth date is required')
       .isISO8601()
       .withMessage('Please provide a valid date'),
     body('nationality')
@@ -98,6 +97,38 @@ router.post(
       .withMessage('Nationality is required')
       .isLength({ max: 50 })
       .withMessage('Nationality must not exceed 50 characters'),
+    body('sex')
+      .notEmpty()
+      .withMessage('Sex is required')
+      .isIn(['male', 'female'])
+      .withMessage('Sex must be either male or female'),
+    body('expirationDate')
+      .notEmpty()
+      .withMessage('License expiration date is required')
+      .isISO8601()
+      .withMessage('Please provide a valid expiration date'),
+    body('weight')
+      .optional()
+      .isNumeric()
+      .withMessage('Weight must be a number'),
+    body('height')
+      .optional()
+      .isNumeric()
+      .withMessage('Height must be a number'),
+    body('bloodType')
+      .optional()
+      .isIn(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'])
+      .withMessage('Invalid blood type'),
+    body('agencyCode')
+      .optional()
+      .trim()
+      .isLength({ max: 20 })
+      .withMessage('Agency code must not exceed 20 characters'),
+    body('eyesColor')
+      .optional()
+      .trim()
+      .isLength({ max: 20 })
+      .withMessage('Eye color must not exceed 20 characters'),
   ]),
   authController.register
 );
@@ -117,7 +148,6 @@ router.post(
       .notEmpty()
       .withMessage('Password is required'),
   ]),
-  validateLoginUserType(UserType.DRIVER),
   authController.login
 );
 

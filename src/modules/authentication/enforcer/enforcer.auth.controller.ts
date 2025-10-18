@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
-import User, { UserType, UserStatus } from '../../../models/user.model';
+import Enforcer, { EnforcerStatus } from '../../../models/enforcer.model';
 
 // Generate JWT Token
 const generateToken = (userId: string): string => {
@@ -11,7 +11,7 @@ const generateToken = (userId: string): string => {
   );
 };
 
-// @desc    Register new officer/treasurer
+// @desc    Register new officer
 // @route   POST /api/auth/enforcer/register
 // @access  Public
 export const register = async (req: Request, res: Response) => {
@@ -26,32 +26,27 @@ export const register = async (req: Request, res: Response) => {
       address,
       status,
       profilePic,
-      userType, // Can be 'officer' or 'treasurer'
     } = req.body;
 
-    // Validate userType - only officer and treasurer allowed (admin uses different endpoint)
-    const validUserTypes = [UserType.OFFICER, UserType.TREASURER];
-    const finalUserType = validUserTypes.includes(userType) ? userType : UserType.OFFICER;
-
-    // Check if user already exists
-    const existingUser = await User.findOne({
+    // Check if enforcer already exists
+    const existingEnforcer = await Enforcer.findOne({
       $or: [{ email }, { username }, { badgeNo }],
     });
 
-    if (existingUser) {
-      if (existingUser.email === email) {
+    if (existingEnforcer) {
+      if (existingEnforcer.email === email) {
         return res.status(400).json({
           success: false,
           error: 'Email already registered',
         });
       }
-      if (existingUser.username === username) {
+      if (existingEnforcer.username === username) {
         return res.status(400).json({
           success: false,
           error: 'Username already taken',
         });
       }
-      if (existingUser.badgeNo === badgeNo) {
+      if (existingEnforcer.badgeNo === badgeNo) {
         return res.status(400).json({
           success: false,
           error: 'Badge number already exists',
@@ -59,9 +54,8 @@ export const register = async (req: Request, res: Response) => {
       }
     }
 
-    // Create new officer/treasurer user
-    const user = await User.create({
-      userType: finalUserType,
+    // Create new enforcer (officer)
+    const enforcer = await Enforcer.create({
       badgeNo,
       name,
       username,
@@ -69,29 +63,29 @@ export const register = async (req: Request, res: Response) => {
       password,
       contactNo,
       address,
-      status: status || UserStatus.ACTIVE,
+      status: status || EnforcerStatus.ACTIVE,
       profilePic,
     });
 
     // Generate token
-    const token = generateToken((user._id as any).toString());
+    const token = generateToken((enforcer._id as any).toString());
 
-    // Return user data without password
+    // Return enforcer data without password
     res.status(201).json({
       success: true,
-      message: `${finalUserType} registered successfully`,
+      message: 'Officer registered successfully',
       data: {
-        user: {
-          id: user._id,
-          userType: user.userType,
-          badgeNo: user.badgeNo,
-          name: user.name,
-          username: user.username,
-          email: user.email,
-          contactNo: user.contactNo,
-          address: user.address,
-          status: user.status,
-          profilePic: user.profilePic,
+        enforcer: {
+          id: enforcer._id,
+          enforcerID: enforcer.enforcerID,
+          badgeNo: enforcer.badgeNo,
+          name: enforcer.name,
+          username: enforcer.username,
+          email: enforcer.email,
+          contactNo: enforcer.contactNo,
+          address: enforcer.address,
+          status: enforcer.status,
+          profilePic: enforcer.profilePic,
         },
         token,
       },
@@ -115,7 +109,7 @@ export const register = async (req: Request, res: Response) => {
   }
 };
 
-// @desc    Login officer/treasurer/admin
+// @desc    Login officer
 // @route   POST /api/auth/enforcer/login
 // @access  Public
 export const login = async (req: Request, res: Response) => {
@@ -130,28 +124,27 @@ export const login = async (req: Request, res: Response) => {
       });
     }
 
-    // Find staff by username or email (all staff types)
-    const user = await User.findOne({
+    // Find enforcer by username or email
+    const enforcer = await Enforcer.findOne({
       $or: [{ username }, { email: username }],
-      userType: { $in: [UserType.ADMIN, UserType.OFFICER, UserType.TREASURER] }, 
     }).select('+password');
 
-    if (!user) {
+    if (!enforcer) {
       return res.status(401).json({
         success: false,
         error: 'Invalid credentials',
       });
     }
 
-    // Check if user is inactive or suspended
-    if (user.status === UserStatus.INACTIVE) {
+    // Check if enforcer is inactive or suspended
+    if (enforcer.status === EnforcerStatus.INACTIVE) {
       return res.status(403).json({
         success: false,
         error: 'Account is inactive. Please contact administrator.',
       });
     }
 
-    if (user.status === UserStatus.SUSPENDED) {
+    if (enforcer.status === EnforcerStatus.SUSPENDED) {
       return res.status(403).json({
         success: false,
         error: 'Account is suspended. Please contact administrator.',
@@ -159,7 +152,7 @@ export const login = async (req: Request, res: Response) => {
     }
 
     // Check password
-    const isPasswordMatch = await user.comparePassword(password);
+    const isPasswordMatch = await enforcer.comparePassword(password);
 
     if (!isPasswordMatch) {
       return res.status(401).json({
@@ -169,7 +162,7 @@ export const login = async (req: Request, res: Response) => {
     }
 
     // Generate token
-    const token = generateToken((user._id as any).toString());
+    const token = generateToken((enforcer._id as any).toString());
 
     res.status(200).json({
       success: true,
@@ -187,44 +180,45 @@ export const login = async (req: Request, res: Response) => {
   }
 };
 
-// @desc    Get current logged in staff member
+// @desc    Get current logged in enforcer (officer)
 // @route   GET /api/auth/enforcer/me
 // @access  Private
 export const getMe = async (req: Request, res: Response) => {
   try {
-    // User is already attached to req by auth middleware
-    const user = await User.findById((req as any).user.id);
+    // Enforcer ID is attached to req by auth middleware
+    const enforcer = await Enforcer.findById((req as any).user.id);
 
-    if (!user) {
+    if (!enforcer) {
       return res.status(404).json({
         success: false,
-        error: 'User not found',
+        error: 'Enforcer not found',
       });
     }
 
-    // Verify user is staff (admin/officer/treasurer)
-    if (user.userType !== UserType.ADMIN && user.userType !== UserType.OFFICER && user.userType !== UserType.TREASURER) {
+    // Check if enforcer is active
+    if (enforcer.status !== EnforcerStatus.ACTIVE) {
       return res.status(403).json({
         success: false,
-        error: 'Access denied. Invalid user type.',
+        error: `Account is ${enforcer.status}. Please contact administrator.`,
       });
     }
 
     res.status(200).json({
       success: true,
       data: {
-        id: user._id,
-        userType: user.userType,
-        badgeNo: user.badgeNo,
-        name: user.name,
-        username: user.username,
-        email: user.email,
-        contactNo: user.contactNo,
-        address: user.address,
-        status: user.status,
-        profilePic: user.profilePic,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
+        id: enforcer._id,
+        enforcerID: enforcer.enforcerID,
+        badgeNo: enforcer.badgeNo,
+        name: enforcer.name,
+        fullName: enforcer.getFullName(),
+        username: enforcer.username,
+        email: enforcer.email,
+        contactNo: enforcer.contactNo,
+        address: enforcer.address,
+        status: enforcer.status,
+        profilePic: enforcer.profilePic,
+        createdAt: enforcer.createdAt,
+        updatedAt: enforcer.updatedAt,
       },
     });
   } catch (error: any) {
