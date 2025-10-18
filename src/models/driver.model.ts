@@ -92,13 +92,6 @@ export interface IDriver extends Document {
  */
 const DriverSchema: Schema = new Schema(
   {
-    driverID: {
-      type: String,
-      required: [true, 'Driver ID is required'],
-      unique: true,
-      trim: true,
-      uppercase: true,
-    },
     licenseNo: {
       type: String,
       required: [true, 'License number is required'],
