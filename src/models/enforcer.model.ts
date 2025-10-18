@@ -14,7 +14,6 @@ export enum EnforcerStatus {
  * Enforcer Interface (Officers)
  */
 export interface IEnforcer extends Document {
-  enforcerID: string; // Unique enforcer identifier
   badgeNo: string;
   name: string;
   username: string;
@@ -47,18 +46,12 @@ export interface IEnforcer extends Document {
  */
 const EnforcerSchema: Schema = new Schema(
   {
-    enforcerID: {
-      type: String,
-      required: [true, 'Enforcer ID is required'],
-      unique: true,
-      trim: true,
-      uppercase: true,
-    },
     badgeNo: {
       type: String,
       required: [true, 'Badge number is required'],
       unique: true,
       trim: true,
+      uppercase: true,
     },
     name: {
       type: String,
@@ -168,20 +161,6 @@ EnforcerSchema.pre<IEnforcer>('save', async function (next) {
   } catch (error: any) {
     next(error);
   }
-});
-
-/**
- * Auto-generate enforcerID if not provided
- */
-EnforcerSchema.pre<IEnforcer>('save', async function (next) {
-  if (!this.enforcerID) {
-    // Generate a unique enforcer ID (e.g., ENF-YYYYMMDD-XXXX)
-    const date = new Date();
-    const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
-    const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-    this.enforcerID = `ENF-${dateStr}-${random}`;
-  }
-  next();
 });
 
 /**

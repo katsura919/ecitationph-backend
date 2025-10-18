@@ -77,7 +77,6 @@ export const register = async (req: Request, res: Response) => {
       data: {
         enforcer: {
           id: enforcer._id,
-          enforcerID: enforcer.enforcerID,
           badgeNo: enforcer.badgeNo,
           name: enforcer.name,
           username: enforcer.username,
@@ -207,7 +206,6 @@ export const getMe = async (req: Request, res: Response) => {
       success: true,
       data: {
         id: enforcer._id,
-        enforcerID: enforcer.enforcerID,
         badgeNo: enforcer.badgeNo,
         name: enforcer.name,
         fullName: enforcer.getFullName(),
