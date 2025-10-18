@@ -174,7 +174,7 @@ router.get(
 // Update violation - creates new version (Admin only)
 router.put(
   '/:id',
-  authenticate, // Add admin role check here
+  //authenticate, // Add admin role check here
   validate(updateViolationValidation),
   updateViolation
 );
