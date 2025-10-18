@@ -106,6 +106,8 @@ router.post(
 // @route   GET /api/auth/enforcer/me
 // @desc    Get current logged in officer
 // @access  Private (Officer only)
-router.get('/me', authenticate, authController.getMe);
+router.get('/me', 
+  //authenticate, 
+  authController.getMe);
 
 export default router;

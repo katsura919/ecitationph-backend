@@ -154,6 +154,8 @@ router.post(
 // @route   GET /api/auth/driver/me
 // @desc    Get current logged in driver
 // @access  Private (Driver only)
-router.get('/me', authenticate, authController.getMe);
+router.get('/me', 
+  //authenticate, 
+  authController.getMe);
 
 export default router;

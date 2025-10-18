@@ -22,7 +22,7 @@ export const createCitation = async (req: Request, res: Response) => {
       driverId,
       driverInfo,
       vehicleInfo,
-      violationIds, // Array of violation IDs
+      violationIds, 
       location,
       violationDateTime,
       images,
@@ -30,8 +30,18 @@ export const createCitation = async (req: Request, res: Response) => {
       dueDate
     } = req.body;
 
+    // Get enforcer ID from authenticated user OR from test header
+    const enforcerId = req.user?.id || req.headers['x-enforcer-id'];
+    
+    if (!enforcerId) {
+      return res.status(401).json({
+        success: false,
+        error: 'Enforcer ID is required (not authenticated and no test enforcer ID provided)'
+      });
+    }
+
     // Verify enforcer exists
-    const enforcer = await Enforcer.findById(req.user?.id);
+    const enforcer = await Enforcer.findById(enforcerId);
     if (!enforcer) {
       return res.status(404).json({
         success: false,

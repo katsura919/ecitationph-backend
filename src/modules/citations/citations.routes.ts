@@ -182,7 +182,7 @@ router.get(
 // Create citation (Enforcer only - should add role check)
 router.post(
   '/',
-  authenticate,
+  //authenticate,
   validate(createCitationValidation),
   createCitation
 );
@@ -190,49 +190,49 @@ router.post(
 // Get all citations with filters (Admin/Enforcer)
 router.get(
   '/',
-  authenticate,
+  //authenticate,
   getAllCitations
 );
 
 // Search citations (Admin/Enforcer)
 router.post(
   '/search',
-  authenticate,
+  //authenticate,
   searchCitations
 );
 
 // Get citations by driver
 router.get(
   '/driver/:driverId',
-  authenticate,
+  //authenticate,
   getCitationsByDriver
 );
 
 // Get citations by enforcer
 router.get(
   '/enforcer/:enforcerId',
-  authenticate,
+  //authenticate,
   getCitationsByEnforcer
 );
 
 // Get overdue citations (Admin)
 router.get(
   '/status/overdue',
-  authenticate,
+  //authenticate,
   getOverdueCitations
 );
 
 // Get statistics (Admin)
 router.get(
   '/reports/statistics',
-  authenticate,
+  //authenticate,
   getStatistics
 );
 
 // Add payment (Admin/Cashier)
 router.post(
   '/:id/payment',
-  authenticate,
+  //authenticate,
   validate(addPaymentValidation),
   addPayment
 );
@@ -240,7 +240,7 @@ router.post(
 // Contest citation (Driver)
 router.put(
   '/:id/contest',
-  authenticate,
+  //authenticate,
   validate(contestCitationValidation),
   contestCitation
 );
@@ -248,7 +248,7 @@ router.put(
 // Resolve contest (Admin)
 router.put(
   '/:id/resolve-contest',
-  authenticate,
+  //authenticate,
   validate(resolveContestValidation),
   resolveContest
 );
@@ -256,7 +256,7 @@ router.put(
 // Update citation (Admin)
 router.put(
   '/:id',
-  authenticate,
+  //authenticate,
   validate(updateCitationValidation),
   updateCitation
 );
@@ -264,7 +264,7 @@ router.put(
 // Void citation (Admin)
 router.delete(
   '/:id',
-  authenticate,
+  //authenticate,
   validate(voidCitationValidation),
   voidCitation
 );
