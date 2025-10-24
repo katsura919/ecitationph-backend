@@ -20,7 +20,6 @@ export const createCitation = async (req: Request, res: Response) => {
   try {
     const {
       driverId,
-      driverInfo,
       vehicleInfo,
       violationIds, 
       location,
@@ -46,6 +45,22 @@ export const createCitation = async (req: Request, res: Response) => {
       return res.status(404).json({
         success: false,
         error: 'Enforcer not found'
+      });
+    }
+
+    // Verify driver exists
+    if (!driverId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Driver ID is required'
+      });
+    }
+
+    const driver = await Driver.findById(driverId);
+    if (!driver) {
+      return res.status(404).json({
+        success: false,
+        error: 'Driver not found'
       });
     }
 
@@ -114,8 +129,7 @@ export const createCitation = async (req: Request, res: Response) => {
     // Create citation
     const citation = new Citation({
       citationNo,
-      driverId: driverId || undefined,
-      driverInfo,
+      driverId,
       vehicleInfo,
       violations: violationItems,
       totalAmount,
@@ -133,11 +147,13 @@ export const createCitation = async (req: Request, res: Response) => {
       dueDate: calculatedDueDate,
       images: images || [],
       notes: notes || '',
-      paymentHistory: [],
       isVoid: false
     });
 
     await citation.save();
+
+    // Populate driver details before returning
+    await citation.populate('driverId', 'firstName middleName lastName licenseNo contactNo email');
 
     return res.status(201).json({
       success: true,
@@ -403,86 +419,16 @@ export const getOverdueCitations = async (req: Request, res: Response) => {
 
 /**
  * @route   POST /api/citations/:id/payment
- * @desc    Add payment to a citation
+ * @desc    Add payment to a citation (DISABLED - Payment history removed)
  * @access  Admin/Cashier
  */
-export const addPayment = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const { amount, paymentMethod, referenceNo, receiptNo, remarks } = req.body;
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid citation ID'
-      });
-    }
-
-    const citation = await Citation.findById(id);
-
-    if (!citation) {
-      return res.status(404).json({
-        success: false,
-        error: 'Citation not found'
-      });
-    }
-
-    if (citation.isVoid) {
-      return res.status(400).json({
-        success: false,
-        error: 'Cannot add payment to a voided citation'
-      });
-    }
-
-    if (citation.status === CitationStatus.PAID) {
-      return res.status(400).json({
-        success: false,
-        error: 'Citation is already fully paid'
-      });
-    }
-
-    // Validate payment amount
-    if (amount <= 0) {
-      return res.status(400).json({
-        success: false,
-        error: 'Payment amount must be greater than zero'
-      });
-    }
-
-    if (amount > citation.amountDue) {
-      return res.status(400).json({
-        success: false,
-        error: `Payment amount exceeds amount due (${citation.amountDue})`
-      });
-    }
-
-    // Add payment
-    const paymentRecord = {
-      amount,
-      paymentMethod,
-      paymentDate: new Date(),
-      referenceNo,
-      receiptNo,
-      processedBy: req.user?.id,
-      remarks
-    };
-
-    await citation.addPayment(paymentRecord);
-
-    return res.status(200).json({
-      success: true,
-      message: 'Payment added successfully',
-      data: citation
-    });
-  } catch (error: any) {
-    console.error('Error adding payment:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to add payment',
-      details: error.message
-    });
-  }
-};
+// export const addPayment = async (req: Request, res: Response) => {
+//   // Payment functionality disabled - payment history removed from model
+//   return res.status(501).json({
+//     success: false,
+//     error: 'Payment functionality not implemented'
+//   });
+// };
 
 /**
  * @route   PUT /api/citations/:id/contest

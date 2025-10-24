@@ -11,7 +11,6 @@ import {
   getCitationsByDriver,
   getCitationsByEnforcer,
   getOverdueCitations,
-  addPayment,
   contestCitation,
   resolveContest,
   voidCitation,
@@ -27,14 +26,11 @@ const router = Router();
 
 // Create citation validation
 const createCitationValidation = [
-  body('driverInfo.firstName')
-    .trim()
+  body('driverId')
     .notEmpty()
-    .withMessage('Driver first name is required'),
-  body('driverInfo.lastName')
-    .trim()
-    .notEmpty()
-    .withMessage('Driver last name is required'),
+    .withMessage('Driver ID is required')
+    .isMongoId()
+    .withMessage('Invalid driver ID'),
   body('vehicleInfo.plateNo')
     .trim()
     .notEmpty()
@@ -234,7 +230,6 @@ router.post(
   '/:id/payment',
   //authenticate,
   validate(addPaymentValidation),
-  addPayment
 );
 
 // Contest citation (Driver)

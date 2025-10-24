@@ -59,27 +59,19 @@ router.post(
     body('address.street')
       .trim()
       .notEmpty()
-      .withMessage('Street is required')
-      .isLength({ max: 100 })
-      .withMessage('Street must not exceed 100 characters'),
+      .withMessage('Street is required'),
     body('address.barangay')
       .trim()
       .notEmpty()
-      .withMessage('Barangay is required')
-      .isLength({ max: 100 })
-      .withMessage('Barangay must not exceed 100 characters'),
+      .withMessage('Barangay is required'),
     body('address.city')
       .trim()
       .notEmpty()
-      .withMessage('City is required')
-      .isLength({ max: 100 })
-      .withMessage('City must not exceed 100 characters'),
+      .withMessage('City is required'),
     body('address.province')
       .trim()
       .notEmpty()
-      .withMessage('Province is required')
-      .isLength({ max: 100 })
-      .withMessage('Province must not exceed 100 characters'),
+      .withMessage('Province is required'),
     body('address.postalCode')
       .trim()
       .notEmpty()
@@ -92,16 +84,15 @@ router.post(
       .isISO8601()
       .withMessage('Please provide a valid date'),
     body('nationality')
+      .optional()
       .trim()
-      .notEmpty()
-      .withMessage('Nationality is required')
       .isLength({ max: 50 })
       .withMessage('Nationality must not exceed 50 characters'),
     body('sex')
       .notEmpty()
       .withMessage('Sex is required')
-      .isIn(['male', 'female'])
-      .withMessage('Sex must be either male or female'),
+      .isIn(['MALE', 'FEMALE', 'male', 'female'])
+      .withMessage('Sex must be either MALE or FEMALE'),
     body('expirationDate')
       .notEmpty()
       .withMessage('License expiration date is required')

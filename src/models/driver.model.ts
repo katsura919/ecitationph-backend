@@ -5,10 +5,10 @@ import bcrypt from 'bcryptjs';
  * Driver Status
  */
 export enum DriverStatus {
-  ACTIVE = 'active',
-  INACTIVE = 'inactive',
-  SUSPENDED = 'suspended',
-  EXPIRED = 'expired'
+  ACTIVE = 'ACTIVE',
+  INACTIVE = 'INACTIVE',
+  SUSPENDED = 'SUSPENDED',
+  EXPIRED = 'EXPIRED'
 }
 
 /**
@@ -29,8 +29,8 @@ export enum BloodType {
  * Sex/Gender Enum
  */
 export enum Sex {
-  MALE = 'male',
-  FEMALE = 'female'
+  MALE = 'MALE',
+  FEMALE = 'FEMALE'
 }
 
 /**
@@ -92,6 +92,11 @@ export interface IDriver extends Document {
  */
 const DriverSchema: Schema = new Schema(
   {
+    driverID: {
+      type: String,
+      unique: true,
+      sparse: true, // Allow multiple null values during creation
+    },
     licenseNo: {
       type: String,
       required: [true, 'License number is required'],
@@ -300,11 +305,12 @@ DriverSchema.pre<IDriver>('save', async function (next) {
  */
 DriverSchema.pre<IDriver>('save', async function (next) {
   if (!this.driverID) {
-    // Generate a unique driver ID (e.g., DRV-YYYYMMDD-XXXX)
+    // Generate a unique driver ID (e.g., DRV-YYYYMMDD-XXXXXX)
     const date = new Date();
     const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
-    const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-    this.driverID = `DRV-${dateStr}-${random}`;
+    const random = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
+    const timestamp = Date.now().toString().slice(-4); // Last 4 digits of timestamp
+    this.driverID = `DRV-${dateStr}-${timestamp}${random.slice(0, 2)}`;
   }
   next();
 });

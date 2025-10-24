@@ -1,18 +1,5 @@
 import mongoose from 'mongoose';
-import { ICitation, ICitationModel, CitationStatus, PaymentMethod } from '../../models/citation.model';
-
-/**
- * Payment Record Interface
- */
-export interface IPaymentRecord {
-  amount: number;
-  paymentMethod: PaymentMethod;
-  paymentDate: Date;
-  referenceNo?: string;
-  receiptNo?: string;
-  processedBy?: mongoose.Types.ObjectId;
-  remarks?: string;
-}
+import { ICitation, ICitationModel, CitationStatus } from '../../models/citation.model';
 
 /**
  * STATIC METHODS
@@ -200,28 +187,6 @@ export function calculateTotalAmount(citation: ICitation): number {
 }
 
 /**
- * Add a payment to the citation
- */
-export async function addPayment(
-  citation: ICitation,
-  payment: IPaymentRecord
-): Promise<ICitation> {
-  citation.paymentHistory.push(payment);
-  citation.amountPaid += payment.amount;
-  citation.amountDue = citation.totalAmount - citation.amountPaid;
-  
-  // Update status based on payment
-  if (citation.amountPaid >= citation.totalAmount) {
-    citation.status = CitationStatus.PAID;
-  } else if (citation.amountPaid > 0) {
-    citation.status = CitationStatus.PARTIALLY_PAID;
-  }
-  
-  await citation.save();
-  return citation;
-}
-
-/**
  * Mark citation as fully paid
  */
 export async function markAsPaid(citation: ICitation): Promise<ICitation> {
@@ -323,9 +288,10 @@ export async function updateStatus(citation: ICitation): Promise<ICitation> {
  * Get citation summary for display
  */
 export function getCitationSummary(citation: ICitation): any {
+  // Note: driverId needs to be populated to get driver name
   return {
     citationNo: citation.citationNo,
-    driverName: `${citation.driverInfo.firstName} ${citation.driverInfo.lastName}`,
+    driverId: citation.driverId,
     plateNo: citation.vehicleInfo.plateNo,
     violationsCount: citation.violations.length,
     totalAmount: citation.totalAmount,

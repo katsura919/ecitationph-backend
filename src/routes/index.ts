@@ -4,6 +4,7 @@ import authEnforcerRoutes from '../modules/authentication/enforcer/enforcer.auth
 import authDriverRoutes from '../modules/authentication/driver/driver.auth.routes';
 import violationsRoutes from '../modules/violations/violations.routes';
 import citationsRoutes from '../modules/citations/citations.routes';
+import driverRoutes from '../modules/driver/driver.routes';
 
 const router = Router();
 
@@ -13,5 +14,6 @@ router.use('/auth/enforcer', authEnforcerRoutes);
 router.use('/auth/driver', authDriverRoutes);
 router.use('/violations', violationsRoutes);
 router.use('/citations', citationsRoutes);
+router.use('/drivers', driverRoutes);
 
 export default router;

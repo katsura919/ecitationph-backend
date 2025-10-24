@@ -14,17 +14,6 @@ export enum CitationStatus {
 }
 
 /**
- * Payment Method Enum
- */
-export enum PaymentMethod {
-  CASH = 'CASH',
-  ONLINE = 'ONLINE',
-  BANK_TRANSFER = 'BANK_TRANSFER',
-  GCASH = 'GCASH',
-  PAYMAYA = 'PAYMAYA'
-}
-
-/**
  * Violation Item Interface (each violation in the citation)
  */
 export interface IViolationItem {
@@ -34,19 +23,6 @@ export interface IViolationItem {
   description: string;                   // Stored for historical reference
   fineAmount: number;                    // Calculated fine amount for this specific violation
   offenseCount?: number;                 // 1st, 2nd, 3rd offense (for progressive fines)
-}
-
-/**
- * Payment Record Interface
- */
-export interface IPaymentRecord {
-  amount: number;
-  paymentMethod: PaymentMethod;
-  paymentDate: Date;
-  referenceNo?: string;           // Transaction reference number
-  receiptNo?: string;             // Official receipt number
-  processedBy?: mongoose.Types.ObjectId; // Admin/Officer who processed payment
-  remarks?: string;
 }
 
 /**
@@ -71,15 +47,7 @@ export interface ICitation extends Document {
   citationNo: string;             // Unique citation ticket number (e.g., "TCT-2025-000001")
   
   // Driver/Violator Information
-  driverId?: mongoose.Types.ObjectId;  // Reference to Driver model (if registered)
-  driverInfo: {
-    licenseNo?: string;
-    firstName: string;
-    middleName?: string;
-    lastName: string;
-    address?: string;
-    contactNo?: string;
-  };
+  driverId: mongoose.Types.ObjectId;  // Reference to Driver model (required)
   
   // Vehicle Information
   vehicleInfo: {
@@ -114,7 +82,6 @@ export interface ICitation extends Document {
   // Status and Payment
   status: CitationStatus;
   dueDate: Date;                  // Payment due date
-  paymentHistory: IPaymentRecord[]; // Array of payment transactions
   
   // Evidence/Documentation
   images?: string[];              // URLs to violation photos
@@ -140,7 +107,6 @@ export interface ICitation extends Document {
   
   // Instance Methods
   calculateTotalAmount(): number;
-  addPayment(payment: IPaymentRecord): Promise<ICitation>;
   markAsPaid(): Promise<ICitation>;
   contestCitation(reason: string, contestedBy: mongoose.Types.ObjectId): Promise<ICitation>;
   voidCitation(reason: string, voidedBy: mongoose.Types.ObjectId): Promise<ICitation>;
@@ -171,15 +137,8 @@ const CitationSchema = new Schema<ICitation, ICitationModel>(
     // Driver/Violator Information
     driverId: {
       type: Schema.Types.ObjectId,
-      ref: 'Driver'
-    },
-    driverInfo: {
-      licenseNo: String,
-      firstName: { type: String, required: true },
-      middleName: String,
-      lastName: { type: String, required: true },
-      address: String,
-      contactNo: String
+      ref: 'Driver',
+      required: true
     },
     
     // Vehicle Information
@@ -272,22 +231,6 @@ const CitationSchema = new Schema<ICitation, ICitationModel>(
       type: Date,
       required: true
     },
-    paymentHistory: [{
-      amount: { type: Number, required: true },
-      paymentMethod: {
-        type: String,
-        enum: Object.values(PaymentMethod),
-        required: true
-      },
-      paymentDate: { type: Date, required: true, default: Date.now },
-      referenceNo: String,
-      receiptNo: String,
-      processedBy: {
-        type: Schema.Types.ObjectId,
-        ref: 'User'
-      },
-      remarks: String
-    }],
     
     // Evidence/Documentation
     images: [String],
@@ -397,10 +340,6 @@ CitationSchema.statics.getStatistics = function(startDate?: Date, endDate?: Date
  */
 CitationSchema.methods.calculateTotalAmount = function(): number {
   return CitationHelpers.calculateTotalAmount(this as ICitation);
-};
-
-CitationSchema.methods.addPayment = async function(payment: IPaymentRecord) {
-  return CitationHelpers.addPayment(this as ICitation, payment);
 };
 
 CitationSchema.methods.markAsPaid = async function() {
