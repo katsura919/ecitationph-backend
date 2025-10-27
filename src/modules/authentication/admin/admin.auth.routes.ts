@@ -97,7 +97,7 @@ router.post(
 // @access  Public
 router.post(
   '/login',
-  strictLimiter,
+  //strictLimiter,
   validate([
     body('username')
       .trim()
