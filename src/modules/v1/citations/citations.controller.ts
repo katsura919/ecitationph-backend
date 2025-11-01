@@ -9,16 +9,7 @@ import Driver from "../../../models/driver.model";
 import mongoose from "mongoose";
 import * as CitationHelpers from "./citations.helpers";
 
-/**
- * Citations Controller
- * Handles CRUD operations for traffic citations/tickets
- */
 
-/**
- * @route   POST /api/citations
- * @desc    Create a new citation (issue a ticket)
- * @access  Enforcer only
- */
 export const createCitation = async (req: Request, res: Response) => {
   try {
     const {
@@ -187,11 +178,7 @@ export const createCitation = async (req: Request, res: Response) => {
   }
 };
 
-/**
- * @route   GET /api/citations
- * @desc    Get all citations with optional filters
- * @access  Admin/Enforcer
- */
+
 export const getAllCitations = async (req: Request, res: Response) => {
   try {
     const {
@@ -242,11 +229,7 @@ export const getAllCitations = async (req: Request, res: Response) => {
   }
 };
 
-/**
- * @route   GET /api/citations/:id
- * @desc    Get citation by ID
- * @access  Public/Authenticated
- */
+
 export const getCitationById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -284,11 +267,7 @@ export const getCitationById = async (req: Request, res: Response) => {
   }
 };
 
-/**
- * @route   GET /api/citations/number/:citationNo
- * @desc    Get citation by citation number
- * @access  Public
- */
+
 export const getCitationByNumber = async (req: Request, res: Response) => {
   try {
     const { citationNo } = req.params;
@@ -319,11 +298,7 @@ export const getCitationByNumber = async (req: Request, res: Response) => {
   }
 };
 
-/**
- * @route   POST /api/citations/search
- * @desc    Search citations with advanced filters
- * @access  Admin/Enforcer
- */
+
 export const searchCitations = async (req: Request, res: Response) => {
   try {
     const filters = req.body;
@@ -344,11 +319,7 @@ export const searchCitations = async (req: Request, res: Response) => {
   }
 };
 
-/**
- * @route   GET /api/citations/driver/:driverId
- * @desc    Get all citations for a specific driver
- * @access  Driver/Admin/Enforcer
- */
+
 export const getCitationsByDriver = async (req: Request, res: Response) => {
   try {
     const { driverId } = req.params;
@@ -379,11 +350,7 @@ export const getCitationsByDriver = async (req: Request, res: Response) => {
   }
 };
 
-/**
- * @route   GET /api/citations/enforcer/:enforcerId
- * @desc    Get all citations issued by a specific enforcer
- * @access  Enforcer/Admin
- */
+
 export const getCitationsByEnforcer = async (req: Request, res: Response) => {
   try {
     const { enforcerId } = req.params;
@@ -414,11 +381,7 @@ export const getCitationsByEnforcer = async (req: Request, res: Response) => {
   }
 };
 
-/**
- * @route   GET /api/citations/overdue
- * @desc    Get all overdue citations
- * @access  Admin
- */
+
 export const getOverdueCitations = async (req: Request, res: Response) => {
   try {
     const citations = await Citation.getOverdueCitations();
@@ -438,24 +401,7 @@ export const getOverdueCitations = async (req: Request, res: Response) => {
   }
 };
 
-/**
- * @route   POST /api/citations/:id/payment
- * @desc    Add payment to a citation (DISABLED - Payment history removed)
- * @access  Admin/Cashier
- */
-// export const addPayment = async (req: Request, res: Response) => {
-//   // Payment functionality disabled - payment history removed from model
-//   return res.status(501).json({
-//     success: false,
-//     error: 'Payment functionality not implemented'
-//   });
-// };
 
-/**
- * @route   PUT /api/citations/:id/contest
- * @desc    Contest a citation
- * @access  Driver
- */
 export const contestCitation = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -515,11 +461,7 @@ export const contestCitation = async (req: Request, res: Response) => {
   }
 };
 
-/**
- * @route   PUT /api/citations/:id/resolve-contest
- * @desc    Resolve a contested citation
- * @access  Admin
- */
+
 export const resolveContest = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -570,11 +512,7 @@ export const resolveContest = async (req: Request, res: Response) => {
   }
 };
 
-/**
- * @route   DELETE /api/citations/:id
- * @desc    Void a citation
- * @access  Admin
- */
+
 export const voidCitation = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -655,11 +593,7 @@ export const getStatistics = async (req: Request, res: Response) => {
   }
 };
 
-/**
- * @route   PUT /api/citations/:id
- * @desc    Update citation details (limited fields)
- * @access  Admin
- */
+
 export const updateCitation = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
