@@ -55,8 +55,9 @@ export async function getByDriver(
   ContestModel: IContestModel,
   driverId: mongoose.Types.ObjectId
 ): Promise<IContest[]> {
-  return ContestModel.find({ contestedBy: driverId, isActive: true })
+  return ContestModel.find({ driverId, isActive: true })
     .populate("citationId", "citationNo totalAmount status")
+    .populate("contestedBy", "firstName lastName email")
     .sort({ createdAt: -1 });
 }
 
@@ -191,6 +192,7 @@ export async function submitContest(
   // Create new contest
   const contest = new Contest({
     citationId,
+    driverId: citation.driverId, // Get driverId from citation
     contestNo,
     reason: contestData.reason,
     description: contestData.description,
@@ -215,12 +217,16 @@ export async function submitContest(
 export async function approveContest(
   contest: IContest,
   resolvedBy: mongoose.Types.ObjectId,
-  resolution: string
+  resolution: string,
+  reviewNotes?: string
 ): Promise<IContest> {
   contest.status = ContestStatus.APPROVED;
   contest.reviewedBy = resolvedBy;
   contest.reviewedAt = new Date();
   contest.resolution = resolution;
+  if (reviewNotes) {
+    contest.reviewNotes = reviewNotes;
+  }
 
   contest.addStatusHistory(ContestStatus.APPROVED, resolvedBy, resolution);
 
@@ -242,12 +248,16 @@ export async function approveContest(
 export async function rejectContest(
   contest: IContest,
   resolvedBy: mongoose.Types.ObjectId,
-  resolution: string
+  resolution: string,
+  reviewNotes?: string
 ): Promise<IContest> {
   contest.status = ContestStatus.REJECTED;
   contest.reviewedBy = resolvedBy;
   contest.reviewedAt = new Date();
   contest.resolution = resolution;
+  if (reviewNotes) {
+    contest.reviewNotes = reviewNotes;
+  }
 
   contest.addStatusHistory(ContestStatus.REJECTED, resolvedBy, resolution);
 

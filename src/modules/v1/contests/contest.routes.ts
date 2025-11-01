@@ -37,6 +37,16 @@ const submitContestValidation = [
     .trim()
     .isLength({ min: 1, max: 100 })
     .withMessage("Witness name is required and must be under 100 characters"),
+  body("witnessInfo.*.contactNo")
+    .optional()
+    .trim()
+    .isLength({ max: 20 })
+    .withMessage("Contact number cannot exceed 20 characters"),
+  body("witnessInfo.*.statement")
+    .optional()
+    .trim()
+    .isLength({ max: 500 })
+    .withMessage("Witness statement cannot exceed 500 characters"),
 ];
 
 const resolveContestValidation = [
@@ -45,6 +55,11 @@ const resolveContestValidation = [
     .trim()
     .isLength({ min: 10, max: 1000 })
     .withMessage("Resolution must be between 10 and 1000 characters"),
+  body("reviewNotes")
+    .optional()
+    .trim()
+    .isLength({ max: 1000 })
+    .withMessage("Review notes cannot exceed 1000 characters"),
 ];
 
 const contestIdValidation = [
@@ -97,7 +112,7 @@ router.post(
 // Get contest by citation ID
 router.get(
   "/citation/:citationId/contest",
-  authenticate,
+  //authenticate,
   citationIdValidation,
   handleValidationErrors,
   ContestController.getContestByCitation

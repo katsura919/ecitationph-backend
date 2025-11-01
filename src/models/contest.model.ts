@@ -18,6 +18,9 @@ export interface IContest extends Document {
   // Reference to Citation
   citationId: mongoose.Types.ObjectId; // Reference to Citation model
 
+  // Driver Information (for efficient querying)
+  driverId: mongoose.Types.ObjectId; // Reference to Driver model (redundant but efficient)
+
   // Contest Information
   contestNo: string; // Unique contest number (e.g., "CON-2025-000001")
   reason: string; // Reason for contesting the citation
@@ -61,11 +64,13 @@ export interface IContest extends Document {
   // Instance Methods
   approve(
     resolvedBy: mongoose.Types.ObjectId,
-    resolution: string
+    resolution: string,
+    reviewNotes?: string
   ): Promise<IContest>;
   reject(
     resolvedBy: mongoose.Types.ObjectId,
-    resolution: string
+    resolution: string,
+    reviewNotes?: string
   ): Promise<IContest>;
   withdraw(): Promise<IContest>;
   addStatusHistory(
@@ -94,6 +99,14 @@ const ContestSchema = new Schema<IContest, IContestModel>(
       ref: "Citation",
       required: true,
       unique: true, // Ensures one contest per citation
+      index: true,
+    },
+
+    // Driver Information (for efficient querying)
+    driverId: {
+      type: Schema.Types.ObjectId,
+      ref: "Driver",
+      required: true,
       index: true,
     },
 
@@ -193,12 +206,13 @@ const ContestSchema = new Schema<IContest, IContestModel>(
 );
 
 // Additional indexes for efficient querying
-// Note: citationId, contestedBy, and status already have indexes from field definitions
+// Note: citationId, driverId, contestedBy, and status already have indexes from field definitions
 ContestSchema.index({ submittedAt: -1 });
 ContestSchema.index({ createdAt: -1 });
 
 // Compound indexes
 ContestSchema.index({ status: 1, submittedAt: -1 });
+ContestSchema.index({ driverId: 1, status: 1 });
 ContestSchema.index({ contestedBy: 1, status: 1 });
 
 /**
@@ -263,20 +277,28 @@ ContestSchema.statics.getStatistics = function (
  */
 ContestSchema.methods.approve = async function (
   resolvedBy: mongoose.Types.ObjectId,
-  resolution: string
+  resolution: string,
+  reviewNotes?: string
 ) {
   return ContestHelpers.approveContest(
     this as IContest,
     resolvedBy,
-    resolution
+    resolution,
+    reviewNotes
   );
 };
 
 ContestSchema.methods.reject = async function (
   resolvedBy: mongoose.Types.ObjectId,
-  resolution: string
+  resolution: string,
+  reviewNotes?: string
 ) {
-  return ContestHelpers.rejectContest(this as IContest, resolvedBy, resolution);
+  return ContestHelpers.rejectContest(
+    this as IContest,
+    resolvedBy,
+    resolution,
+    reviewNotes
+  );
 };
 
 ContestSchema.methods.withdraw = async function () {

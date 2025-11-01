@@ -263,7 +263,7 @@ export const moveToReview = async (req: Request, res: Response) => {
 export const approveContest = async (req: Request, res: Response) => {
   try {
     const { contestId } = req.params;
-    const { resolution } = req.body;
+    const { resolution, reviewNotes } = req.body;
     const resolvedBy = req.user?.id; // Admin/User ID
 
     if (!resolvedBy) {
@@ -307,7 +307,8 @@ export const approveContest = async (req: Request, res: Response) => {
 
     const updatedContest = await contest.approve(
       new mongoose.Types.ObjectId(resolvedBy),
-      resolution.trim()
+      resolution.trim(),
+      reviewNotes?.trim()
     );
 
     await updatedContest.populate([
@@ -336,7 +337,7 @@ export const approveContest = async (req: Request, res: Response) => {
 export const rejectContest = async (req: Request, res: Response) => {
   try {
     const { contestId } = req.params;
-    const { resolution } = req.body;
+    const { resolution, reviewNotes } = req.body;
     const resolvedBy = req.user?.id; // Admin/User ID
 
     if (!resolvedBy) {
@@ -380,7 +381,8 @@ export const rejectContest = async (req: Request, res: Response) => {
 
     const updatedContest = await contest.reject(
       new mongoose.Types.ObjectId(resolvedBy),
-      resolution.trim()
+      resolution.trim(),
+      reviewNotes?.trim()
     );
 
     await updatedContest.populate([

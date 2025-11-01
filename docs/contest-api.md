@@ -4,6 +4,13 @@
 
 The Contest API manages citation appeals/contests in the eCitation system. Each citation can have **exactly one contest**, enforced by database constraints.
 
+**Key Features:**
+
+- One contest per citation (enforced by unique constraint)
+- Efficient driver queries (driverId field for indexing)
+- Complete audit trail with status history
+- File upload support for evidence
+
 ## Base URL
 
 ```
@@ -31,9 +38,9 @@ Submit a new contest for a citation.
   "supportingDocuments": ["string (URLs, optional)"],
   "witnessInfo": [
     {
-      "name": "string (required)",
-      "contactNo": "string (optional)",
-      "statement": "string (optional)"
+      "name": "string (required, max 100 chars)",
+      "contactNo": "string (optional, max 20 chars)",
+      "statement": "string (optional, max 500 chars)"
     }
   ]
 }
@@ -71,6 +78,7 @@ Retrieve the contest for a specific citation.
     "_id": "contest_id",
     "contestNo": "CON-2025-000001",
     "citationId": "citation_object",
+    "driverId": "driver_id",
     "contestedBy": "driver_object",
     "reason": "Contest reason",
     "status": "SUBMITTED",
@@ -146,6 +154,7 @@ Get detailed information about a specific contest.
     "_id": "contest_id",
     "contestNo": "CON-2025-000001",
     "citationId": "citation_object",
+    "driverId": "driver_id",
     "contestedBy": "driver_object",
     "reviewedBy": "admin_object",
     "reason": "Contest reason",
@@ -155,7 +164,8 @@ Get detailed information about a specific contest.
     "status": "UNDER_REVIEW",
     "statusHistory": [],
     "submittedAt": "2025-11-01T10:00:00Z",
-    "reviewedAt": "2025-11-01T14:00:00Z"
+    "reviewedAt": "2025-11-01T14:00:00Z",
+    "reviewNotes": "Admin review notes"
   }
 }
 ```
@@ -186,7 +196,8 @@ Approve a contest and dismiss the citation.
 
 ```json
 {
-  "resolution": "string (10-1000 chars, required)"
+  "resolution": "string (10-1000 chars, required)",
+  "reviewNotes": "string (optional, max 1000 chars)"
 }
 ```
 
@@ -210,7 +221,8 @@ Reject a contest and restore citation to original status.
 
 ```json
 {
-  "resolution": "string (10-1000 chars, required)"
+  "resolution": "string (10-1000 chars, required)",
+  "reviewNotes": "string (optional, max 1000 chars)"
 }
 ```
 
@@ -367,6 +379,7 @@ await fetch("/api/v1/contests/contest_id/approve", {
   body: JSON.stringify({
     resolution:
       "Evidence provided clearly shows driver was not present at violation location",
+    reviewNotes: "Reviewed all submitted documents and witness statements",
   }),
 });
 ```
