@@ -1,13 +1,13 @@
-import { Request, Response } from 'express';
-import jwt from 'jsonwebtoken';
-import Driver, { DriverStatus } from '../../../models/driver.model';
+import { Request, Response } from "express";
+import jwt from "jsonwebtoken";
+import Driver, { DriverStatus } from "../../../../models/driver.model";
 
 // Generate JWT Token
 const generateToken = (userId: string): string => {
   return jwt.sign(
     { id: userId },
     process.env.JWT_SECRET as string,
-    { expiresIn: process.env.JWT_EXPIRE || '7d' } as jwt.SignOptions
+    { expiresIn: process.env.JWT_EXPIRE || "7d" } as jwt.SignOptions
   );
 };
 
@@ -48,13 +48,13 @@ export const register = async (req: Request, res: Response) => {
       if (existingDriver.email === email) {
         return res.status(400).json({
           success: false,
-          error: 'Email already registered',
+          error: "Email already registered",
         });
       }
       if (existingDriver.licenseNo === licenseNo.toUpperCase()) {
         return res.status(400).json({
           success: false,
-          error: 'License number already exists',
+          error: "License number already exists",
         });
       }
     }
@@ -90,7 +90,7 @@ export const register = async (req: Request, res: Response) => {
     // Return driver data without password
     res.status(201).json({
       success: true,
-      message: 'Driver registered successfully',
+      message: "Driver registered successfully",
       data: {
         driver: {
           id: driver._id,
@@ -124,18 +124,20 @@ export const register = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     // Handle validation errors
-    if (error.name === 'ValidationError') {
-      const messages = Object.values(error.errors).map((err: any) => err.message);
+    if (error.name === "ValidationError") {
+      const messages = Object.values(error.errors).map(
+        (err: any) => err.message
+      );
       return res.status(400).json({
         success: false,
-        error: 'Validation Error',
+        error: "Validation Error",
         messages,
       });
     }
 
     res.status(500).json({
       success: false,
-      error: 'Server Error',
+      error: "Server Error",
       message: error.message,
     });
   }
@@ -152,7 +154,7 @@ export const login = async (req: Request, res: Response) => {
     if (!licenseNo || !password) {
       return res.status(400).json({
         success: false,
-        error: 'Please provide license number and password',
+        error: "Please provide license number and password",
       });
     }
 
@@ -160,14 +162,14 @@ export const login = async (req: Request, res: Response) => {
     const driver = await Driver.findOne({
       $or: [
         { licenseNo: licenseNo.toUpperCase() },
-        { email: licenseNo.toLowerCase() }
+        { email: licenseNo.toLowerCase() },
       ],
-    }).select('+password');
+    }).select("+password");
 
     if (!driver) {
       return res.status(401).json({
         success: false,
-        error: 'Invalid credentials',
+        error: "Invalid credentials",
       });
     }
 
@@ -175,21 +177,21 @@ export const login = async (req: Request, res: Response) => {
     if (driver.status === DriverStatus.INACTIVE) {
       return res.status(403).json({
         success: false,
-        error: 'Account is inactive. Please contact administrator.',
+        error: "Account is inactive. Please contact administrator.",
       });
     }
 
     if (driver.status === DriverStatus.SUSPENDED) {
       return res.status(403).json({
         success: false,
-        error: 'Account is suspended. Please contact administrator.',
+        error: "Account is suspended. Please contact administrator.",
       });
     }
 
     if (driver.status === DriverStatus.EXPIRED) {
       return res.status(403).json({
         success: false,
-        error: 'License has expired. Please renew your license.',
+        error: "License has expired. Please renew your license.",
       });
     }
 
@@ -199,7 +201,7 @@ export const login = async (req: Request, res: Response) => {
     if (!isPasswordMatch) {
       return res.status(401).json({
         success: false,
-        error: 'Invalid credentials',
+        error: "Invalid credentials",
       });
     }
 
@@ -208,7 +210,7 @@ export const login = async (req: Request, res: Response) => {
 
     res.status(200).json({
       success: true,
-      message: 'Login successful',
+      message: "Login successful",
       data: {
         token,
       },
@@ -216,7 +218,7 @@ export const login = async (req: Request, res: Response) => {
   } catch (error: any) {
     res.status(500).json({
       success: false,
-      error: 'Server Error',
+      error: "Server Error",
       message: error.message,
     });
   }
@@ -233,7 +235,7 @@ export const getMe = async (req: Request, res: Response) => {
     if (!driver) {
       return res.status(404).json({
         success: false,
-        error: 'Driver not found',
+        error: "Driver not found",
       });
     }
 
@@ -272,7 +274,7 @@ export const getMe = async (req: Request, res: Response) => {
   } catch (error: any) {
     res.status(500).json({
       success: false,
-      error: 'Server Error',
+      error: "Server Error",
       message: error.message,
     });
   }

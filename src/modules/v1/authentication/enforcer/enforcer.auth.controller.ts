@@ -1,13 +1,13 @@
-import { Request, Response } from 'express';
-import jwt from 'jsonwebtoken';
-import Enforcer, { EnforcerStatus } from '../../../models/enforcer.model';
+import { Request, Response } from "express";
+import jwt from "jsonwebtoken";
+import Enforcer, { EnforcerStatus } from "../../../../models/enforcer.model";
 
 // Generate JWT Token
 const generateToken = (userId: string): string => {
   return jwt.sign(
     { id: userId },
     process.env.JWT_SECRET as string,
-    { expiresIn: process.env.JWT_EXPIRE || '7d' } as jwt.SignOptions
+    { expiresIn: process.env.JWT_EXPIRE || "7d" } as jwt.SignOptions
   );
 };
 
@@ -37,19 +37,19 @@ export const register = async (req: Request, res: Response) => {
       if (existingEnforcer.email === email) {
         return res.status(400).json({
           success: false,
-          error: 'Email already registered',
+          error: "Email already registered",
         });
       }
       if (existingEnforcer.username === username) {
         return res.status(400).json({
           success: false,
-          error: 'Username already taken',
+          error: "Username already taken",
         });
       }
       if (existingEnforcer.badgeNo === badgeNo) {
         return res.status(400).json({
           success: false,
-          error: 'Badge number already exists',
+          error: "Badge number already exists",
         });
       }
     }
@@ -73,7 +73,7 @@ export const register = async (req: Request, res: Response) => {
     // Return enforcer data without password
     res.status(201).json({
       success: true,
-      message: 'Officer registered successfully',
+      message: "Officer registered successfully",
       data: {
         enforcer: {
           id: enforcer._id,
@@ -91,18 +91,20 @@ export const register = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     // Handle validation errors
-    if (error.name === 'ValidationError') {
-      const messages = Object.values(error.errors).map((err: any) => err.message);
+    if (error.name === "ValidationError") {
+      const messages = Object.values(error.errors).map(
+        (err: any) => err.message
+      );
       return res.status(400).json({
         success: false,
-        error: 'Validation Error',
+        error: "Validation Error",
         messages,
       });
     }
 
     res.status(500).json({
       success: false,
-      error: 'Server Error',
+      error: "Server Error",
       message: error.message,
     });
   }
@@ -119,19 +121,19 @@ export const login = async (req: Request, res: Response) => {
     if (!username || !password) {
       return res.status(400).json({
         success: false,
-        error: 'Please provide username and password',
+        error: "Please provide username and password",
       });
     }
 
     // Find enforcer by username or email
     const enforcer = await Enforcer.findOne({
       $or: [{ username }, { email: username }],
-    }).select('+password');
+    }).select("+password");
 
     if (!enforcer) {
       return res.status(401).json({
         success: false,
-        error: 'Invalid credentials',
+        error: "Invalid credentials",
       });
     }
 
@@ -139,14 +141,14 @@ export const login = async (req: Request, res: Response) => {
     if (enforcer.status === EnforcerStatus.INACTIVE) {
       return res.status(403).json({
         success: false,
-        error: 'Account is inactive. Please contact administrator.',
+        error: "Account is inactive. Please contact administrator.",
       });
     }
 
     if (enforcer.status === EnforcerStatus.SUSPENDED) {
       return res.status(403).json({
         success: false,
-        error: 'Account is suspended. Please contact administrator.',
+        error: "Account is suspended. Please contact administrator.",
       });
     }
 
@@ -156,7 +158,7 @@ export const login = async (req: Request, res: Response) => {
     if (!isPasswordMatch) {
       return res.status(401).json({
         success: false,
-        error: 'Invalid credentials',
+        error: "Invalid credentials",
       });
     }
 
@@ -165,7 +167,7 @@ export const login = async (req: Request, res: Response) => {
 
     res.status(200).json({
       success: true,
-      message: 'Login successful',
+      message: "Login successful",
       data: {
         token,
       },
@@ -173,7 +175,7 @@ export const login = async (req: Request, res: Response) => {
   } catch (error: any) {
     res.status(500).json({
       success: false,
-      error: 'Server Error',
+      error: "Server Error",
       message: error.message,
     });
   }
@@ -190,7 +192,7 @@ export const getMe = async (req: Request, res: Response) => {
     if (!enforcer) {
       return res.status(404).json({
         success: false,
-        error: 'Enforcer not found',
+        error: "Enforcer not found",
       });
     }
 
@@ -222,7 +224,7 @@ export const getMe = async (req: Request, res: Response) => {
   } catch (error: any) {
     res.status(500).json({
       success: false,
-      error: 'Server Error',
+      error: "Server Error",
       message: error.message,
     });
   }

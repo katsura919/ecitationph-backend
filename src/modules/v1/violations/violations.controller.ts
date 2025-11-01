@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import Violation, { IViolation } from '../../models/violations.model';
+import Violation, { IViolation } from '../../../models/violations.model';
 import mongoose from 'mongoose';
 
 /**

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { body, param, query } from 'express-validator';
-import { validate } from '../../middleware/validator';
-import { authenticate } from '../../middleware/auth.middleware';
+import { validate } from '../../../middleware/validator';
+import { authenticate } from '../../../middleware/auth.middleware';
 import {
   createViolation,
   getAllActiveViolations,

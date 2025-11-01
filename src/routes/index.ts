@@ -1,19 +1,9 @@
-import { Router } from 'express';
-import authAdminRoutes from '../modules/authentication/admin/admin.auth.routes';
-import authEnforcerRoutes from '../modules/authentication/enforcer/enforcer.auth.routes';
-import authDriverRoutes from '../modules/authentication/driver/driver.auth.routes';
-import violationsRoutes from '../modules/violations/violations.routes';
-import citationsRoutes from '../modules/citations/citations.routes';
-import driverRoutes from '../modules/driver/driver.routes';
+import { Router } from "express";
+import v1 from "../modules/v1/index"
 
 const router = Router();
 
 // Mount routes
-router.use('/auth/admin', authAdminRoutes);
-router.use('/auth/enforcer', authEnforcerRoutes);
-router.use('/auth/driver', authDriverRoutes);
-router.use('/violations', violationsRoutes);
-router.use('/citations', citationsRoutes);
-router.use('/drivers', driverRoutes);
+router.use("/v1", v1);
 
 export default router;

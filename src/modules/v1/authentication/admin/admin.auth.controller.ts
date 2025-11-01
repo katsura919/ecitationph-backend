@@ -1,13 +1,13 @@
-import { Request, Response } from 'express';
-import jwt from 'jsonwebtoken';
-import User, { UserType, UserStatus } from '../../../models/user.model';
+import { Request, Response } from "express";
+import jwt from "jsonwebtoken";
+import User, { UserType, UserStatus } from "../../../../models/user.model";
 
 // Generate JWT Token
 const generateToken = (userId: string): string => {
   return jwt.sign(
     { id: userId },
     process.env.JWT_SECRET as string,
-    { expiresIn: process.env.JWT_EXPIRE || '7d' } as jwt.SignOptions
+    { expiresIn: process.env.JWT_EXPIRE || "7d" } as jwt.SignOptions
   );
 };
 
@@ -31,7 +31,9 @@ export const register = async (req: Request, res: Response) => {
 
     // Validate userType - must be one of the admin/treasurer types
     const validUserTypes = [UserType.ADMIN, UserType.TREASURER];
-    const finalUserType = validUserTypes.includes(userType) ? userType : UserType.ADMIN;
+    const finalUserType = validUserTypes.includes(userType)
+      ? userType
+      : UserType.ADMIN;
 
     // Check if user already exists
     const existingUser = await User.findOne({
@@ -42,19 +44,19 @@ export const register = async (req: Request, res: Response) => {
       if (existingUser.email === email) {
         return res.status(400).json({
           success: false,
-          error: 'Email already registered',
+          error: "Email already registered",
         });
       }
       if (existingUser.username === username) {
         return res.status(400).json({
           success: false,
-          error: 'Username already taken',
+          error: "Username already taken",
         });
       }
       if (existingUser.badgeNo === badgeNo) {
         return res.status(400).json({
           success: false,
-          error: 'Badge number already exists',
+          error: "Badge number already exists",
         });
       }
     }
@@ -98,18 +100,20 @@ export const register = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     // Handle validation errors
-    if (error.name === 'ValidationError') {
-      const messages = Object.values(error.errors).map((err: any) => err.message);
+    if (error.name === "ValidationError") {
+      const messages = Object.values(error.errors).map(
+        (err: any) => err.message
+      );
       return res.status(400).json({
         success: false,
-        error: 'Validation Error',
+        error: "Validation Error",
         messages,
       });
     }
 
     res.status(500).json({
       success: false,
-      error: 'Server Error',
+      error: "Server Error",
       message: error.message,
     });
   }
@@ -126,7 +130,7 @@ export const login = async (req: Request, res: Response) => {
     if (!username || !password) {
       return res.status(400).json({
         success: false,
-        error: 'Please provide username and password',
+        error: "Please provide username and password",
       });
     }
 
@@ -134,12 +138,12 @@ export const login = async (req: Request, res: Response) => {
     const user = await User.findOne({
       $or: [{ username }, { email: username }],
       userType: { $in: [UserType.ADMIN, UserType.TREASURER] },
-    }).select('+password');
+    }).select("+password");
 
     if (!user) {
       return res.status(401).json({
         success: false,
-        error: 'Invalid credentials',
+        error: "Invalid credentials",
       });
     }
 
@@ -147,14 +151,14 @@ export const login = async (req: Request, res: Response) => {
     if (user.status === UserStatus.INACTIVE) {
       return res.status(403).json({
         success: false,
-        error: 'Account is inactive. Please contact administrator.',
+        error: "Account is inactive. Please contact administrator.",
       });
     }
 
     if (user.status === UserStatus.SUSPENDED) {
       return res.status(403).json({
         success: false,
-        error: 'Account is suspended. Please contact administrator.',
+        error: "Account is suspended. Please contact administrator.",
       });
     }
 
@@ -164,7 +168,7 @@ export const login = async (req: Request, res: Response) => {
     if (!isPasswordMatch) {
       return res.status(401).json({
         success: false,
-        error: 'Invalid credentials',
+        error: "Invalid credentials",
       });
     }
 
@@ -173,7 +177,7 @@ export const login = async (req: Request, res: Response) => {
 
     res.status(200).json({
       success: true,
-      message: 'Login successful',
+      message: "Login successful",
       data: {
         token,
       },
@@ -181,7 +185,7 @@ export const login = async (req: Request, res: Response) => {
   } catch (error: any) {
     res.status(500).json({
       success: false,
-      error: 'Server Error',
+      error: "Server Error",
       message: error.message,
     });
   }
@@ -198,7 +202,7 @@ export const getMe = async (req: Request, res: Response) => {
     if (!user) {
       return res.status(404).json({
         success: false,
-        error: 'User not found',
+        error: "User not found",
       });
     }
 
@@ -231,7 +235,7 @@ export const getMe = async (req: Request, res: Response) => {
   } catch (error: any) {
     res.status(500).json({
       success: false,
-      error: 'Server Error',
+      error: "Server Error",
       message: error.message,
     });
   }

@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import Driver from '../../models/driver.model';
+import Driver from '../../../models/driver.model';
 
 /**
  * @route   GET /api/drivers?search=keyword&page=1&limit=20
