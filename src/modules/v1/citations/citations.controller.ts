@@ -183,6 +183,12 @@ export const getAllCitations = async (req: Request, res: Response) => {
       status,
       enforcerId,
       driverId,
+      search,
+      citationNo,
+      plateNo,
+      licenseNo,
+      startDate,
+      endDate,
       page = 1,
       limit = 20,
       sortBy = "createdAt",
@@ -199,17 +205,74 @@ export const getAllCitations = async (req: Request, res: Response) => {
     if (enforcerId) query.issuedBy = enforcerId;
     if (driverId) query.driverId = driverId;
 
+    // Search functionality
+    if (search) {
+      // General search across multiple fields
+      const searchRegex = { $regex: search, $options: "i" };
+      query.$or = [
+        { citationNo: searchRegex },
+        { "vehicleInfo.plateNo": searchRegex },
+        { "enforcerInfo.badgeNo": searchRegex },
+        { "enforcerInfo.name": searchRegex },
+      ];
+    }
+
+    // Specific field searches
+    if (citationNo) {
+      query.citationNo = { $regex: citationNo, $options: "i" };
+    }
+
+    if (plateNo) {
+      query["vehicleInfo.plateNo"] = { $regex: plateNo, $options: "i" };
+    }
+
+    // Date range filtering
+    if (startDate || endDate) {
+      query.createdAt = {};
+      if (startDate) query.createdAt.$gte = new Date(startDate as string);
+      if (endDate) query.createdAt.$lte = new Date(endDate as string);
+    }
+
     const skip = (Number(page) - 1) * Number(limit);
     const sort: any = { [sortBy as string]: sortOrder === "desc" ? -1 : 1 };
 
-    const citations = await Citation.find(query)
+    let citationQuery = Citation.find(query)
       .populate("driverId", "firstName lastName licenseNo")
       .populate("issuedBy", "badgeNo name")
       .sort(sort)
       .skip(skip)
       .limit(Number(limit));
 
-    const total = await Citation.countDocuments(query);
+    let citations = await citationQuery;
+
+    // Post-population filtering for license number (since it's in a referenced document)
+    if (licenseNo) {
+      citations = citations.filter((citation: any) => {
+        return citation.driverId?.licenseNo
+          ?.toLowerCase()
+          .includes((licenseNo as string).toLowerCase());
+      });
+    }
+
+    // Get total count (need to run the query without pagination for accurate count)
+    let totalQuery = Citation.find(query);
+    let totalCitations = await totalQuery;
+
+    // Apply post-population filtering to total count as well
+    if (licenseNo) {
+      const populatedTotalCitations = await Citation.find(query).populate(
+        "driverId",
+        "licenseNo"
+      );
+
+      totalCitations = populatedTotalCitations.filter((citation: any) => {
+        return citation.driverId?.licenseNo
+          ?.toLowerCase()
+          .includes((licenseNo as string).toLowerCase());
+      });
+    }
+
+    const total = totalCitations.length;
 
     return res.status(200).json({
       success: true,
@@ -219,6 +282,17 @@ export const getAllCitations = async (req: Request, res: Response) => {
         page: Number(page),
         limit: Number(limit),
         pages: Math.ceil(total / Number(limit)),
+      },
+      filters: {
+        status,
+        enforcerId,
+        driverId,
+        search,
+        citationNo,
+        plateNo,
+        licenseNo,
+        startDate,
+        endDate,
       },
     });
   } catch (error: any) {

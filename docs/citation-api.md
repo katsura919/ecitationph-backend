@@ -87,9 +87,9 @@ x-enforcer-id: string (ObjectId)
 
 ---
 
-### 2. Get All Citations (with Filtering)
+### 2. Get All Citations (with Filtering & Search)
 
-Retrieves citations with optional filtering, pagination, and sorting.
+Retrieves citations with optional filtering, searching, pagination, and sorting.
 
 **Endpoint:** `GET /citations`
 
@@ -97,11 +97,28 @@ Retrieves citations with optional filtering, pagination, and sorting.
 
 **Query Parameters:**
 
+**Basic Filters:**
+
 - `status` (string, optional): Filter by citation status
   - Values: `PENDING`, `PAID`, `PARTIALLY_PAID`, `OVERDUE`, `CONTESTED`, `DISMISSED`, `VOID`, `all`
   - Default: Returns all statuses (except voided)
 - `enforcerId` (string, optional): Filter by enforcer who issued the citation
 - `driverId` (string, optional): Filter by driver
+
+**Search Parameters:**
+
+- `search` (string, optional): General search across citation number, plate number, enforcer badge, and enforcer name
+- `citationNo` (string, optional): Search by specific citation number
+- `plateNo` (string, optional): Search by vehicle plate number
+- `licenseNo` (string, optional): Search by driver license number
+
+**Date Range:**
+
+- `startDate` (string, optional): Filter citations created from this date (ISO8601)
+- `endDate` (string, optional): Filter citations created until this date (ISO8601)
+
+**Pagination & Sorting:**
+
 - `page` (number, optional): Page number (default: 1)
 - `limit` (number, optional): Items per page (default: 20)
 - `sortBy` (string, optional): Field to sort by (default: "createdAt")
@@ -116,14 +133,29 @@ GET /citations
 # Get overdue citations
 GET /citations?status=OVERDUE
 
+# General search for "ABC" (searches across citation no, plate no, enforcer)
+GET /citations?search=ABC
+
+# Search by specific citation number
+GET /citations?citationNo=TCT-2025
+
+# Search by plate number
+GET /citations?plateNo=ABC1234
+
+# Search by driver license number
+GET /citations?licenseNo=N01-12
+
+# Date range filtering
+GET /citations?startDate=2025-11-01&endDate=2025-11-30
+
+# Combined filters and search
+GET /citations?status=PENDING&search=ABC&page=1&limit=10
+
 # Get citations by driver with pagination
 GET /citations?driverId=67123abc456def789&page=1&limit=10
 
 # Get citations by enforcer, sorted by violation date
 GET /citations?enforcerId=67123abc456def789&sortBy=violationDateTime&sortOrder=asc
-
-# Get pending citations for specific enforcer
-GET /citations?status=PENDING&enforcerId=67123abc456def789
 ```
 
 **Response:**
@@ -160,6 +192,17 @@ GET /citations?status=PENDING&enforcerId=67123abc456def789
     "page": 1,
     "limit": 20,
     "pages": 8
+  },
+  "filters": {
+    "status": "PENDING",
+    "enforcerId": null,
+    "driverId": null,
+    "search": null,
+    "citationNo": null,
+    "plateNo": null,
+    "licenseNo": null,
+    "startDate": null,
+    "endDate": null
   }
 }
 ```

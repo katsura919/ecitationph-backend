@@ -13,7 +13,7 @@ export const submitContest = async (req: Request, res: Response) => {
     const { reason, description, supportingDocuments, witnessInfo } = req.body;
 
     // Get the driver ID from the authenticated user
-    const contestedBy = req.user?.id; // Assuming you have user info in req.user
+    const contestedBy = req.user?.id; 
 
     if (!contestedBy) {
       return res.status(401).json({
