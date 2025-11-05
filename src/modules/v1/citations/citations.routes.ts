@@ -7,12 +7,6 @@ import {
   getAllCitations,
   getCitationById,
   getCitationByNumber,
-  searchCitations,
-  getCitationsByDriver,
-  getCitationsByEnforcer,
-  getOverdueCitations,
-  contestCitation,
-  resolveContest,
   voidCitation,
   getStatistics,
   updateCitation,
@@ -57,38 +51,6 @@ const createCitationValidation = [
     .isISO8601()
     .withMessage("Invalid violation date time"),
   body("dueDate").optional().isISO8601().withMessage("Invalid due date"),
-];
-
-// Add payment validation
-const addPaymentValidation = [
-  param("id").isMongoId().withMessage("Invalid citation ID"),
-  body("amount")
-    .isFloat({ min: 0.01 })
-    .withMessage("Amount must be greater than zero"),
-  body("paymentMethod")
-    .isIn(["CASH", "ONLINE", "BANK_TRANSFER", "GCASH", "PAYMAYA"])
-    .withMessage("Invalid payment method"),
-  body("referenceNo").optional().trim(),
-  body("receiptNo").optional().trim(),
-  body("remarks").optional().trim(),
-];
-
-// Contest citation validation
-const contestCitationValidation = [
-  param("id").isMongoId().withMessage("Invalid citation ID"),
-  body("reason")
-    .trim()
-    .notEmpty()
-    .withMessage("Contest reason is required")
-    .isLength({ min: 10 })
-    .withMessage("Contest reason must be at least 10 characters"),
-];
-
-// Resolve contest validation
-const resolveContestValidation = [
-  param("id").isMongoId().withMessage("Invalid citation ID"),
-  body("resolution").trim().notEmpty().withMessage("Resolution is required"),
-  body("approve").isBoolean().withMessage("Approve must be a boolean"),
 ];
 
 // Void citation validation
@@ -138,38 +100,16 @@ router.post(
 );
 
 // Get all citations with filters (Admin/Enforcer)
+// Supports: status, enforcerId, driverId, pagination, sorting
+// Examples:
+// GET /citations - get all citations
+// GET /citations?status=OVERDUE - get overdue citations
+// GET /citations?driverId=123 - get citations by driver
+// GET /citations?enforcerId=456 - get citations by enforcer
 router.get(
   "/",
   //authenticate,
   getAllCitations
-);
-
-// Search citations (Admin/Enforcer)
-router.post(
-  "/search",
-  //authenticate,
-  searchCitations
-);
-
-// Get citations by driver
-router.get(
-  "/driver/:driverId",
-  //authenticate,
-  getCitationsByDriver
-);
-
-// Get citations by enforcer
-router.get(
-  "/enforcer/:enforcerId",
-  //authenticate,
-  getCitationsByEnforcer
-);
-
-// Get overdue citations (Admin)
-router.get(
-  "/status/overdue",
-  //authenticate,
-  getOverdueCitations
 );
 
 // Get statistics (Admin)
@@ -177,29 +117,6 @@ router.get(
   "/reports/statistics",
   //authenticate,
   getStatistics
-);
-
-// Add payment (Admin/Cashier)
-router.post(
-  "/:id/payment",
-  //authenticate,
-  validate(addPaymentValidation)
-);
-
-// Contest citation (Driver)
-router.put(
-  "/:id/contest",
-  //authenticate,
-  validate(contestCitationValidation),
-  contestCitation
-);
-
-// Resolve contest (Admin)
-router.put(
-  "/:id/resolve-contest",
-  //authenticate,
-  validate(resolveContestValidation),
-  resolveContest
 );
 
 // Update citation (Admin)

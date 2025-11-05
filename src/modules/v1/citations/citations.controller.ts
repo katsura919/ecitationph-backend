@@ -9,7 +9,6 @@ import Driver from "../../../models/driver.model";
 import mongoose from "mongoose";
 import * as CitationHelpers from "./citations.helpers";
 
-
 export const createCitation = async (req: Request, res: Response) => {
   try {
     const {
@@ -178,7 +177,6 @@ export const createCitation = async (req: Request, res: Response) => {
   }
 };
 
-
 export const getAllCitations = async (req: Request, res: Response) => {
   try {
     const {
@@ -193,7 +191,11 @@ export const getAllCitations = async (req: Request, res: Response) => {
 
     const query: any = { isVoid: false };
 
-    if (status) query.status = status;
+    // Only filter by status if explicitly provided
+    if (status && status !== "all") {
+      query.status = status;
+    }
+
     if (enforcerId) query.issuedBy = enforcerId;
     if (driverId) query.driverId = driverId;
 
@@ -228,7 +230,6 @@ export const getAllCitations = async (req: Request, res: Response) => {
     });
   }
 };
-
 
 export const getCitationById = async (req: Request, res: Response) => {
   try {
@@ -267,7 +268,6 @@ export const getCitationById = async (req: Request, res: Response) => {
   }
 };
 
-
 export const getCitationByNumber = async (req: Request, res: Response) => {
   try {
     const { citationNo } = req.params;
@@ -297,221 +297,6 @@ export const getCitationByNumber = async (req: Request, res: Response) => {
     });
   }
 };
-
-
-export const searchCitations = async (req: Request, res: Response) => {
-  try {
-    const filters = req.body;
-    const citations = await CitationHelpers.searchCitations(Citation, filters);
-
-    return res.status(200).json({
-      success: true,
-      count: citations.length,
-      data: citations,
-    });
-  } catch (error: any) {
-    console.error("Error searching citations:", error);
-    return res.status(500).json({
-      success: false,
-      error: "Failed to search citations",
-      details: error.message,
-    });
-  }
-};
-
-
-export const getCitationsByDriver = async (req: Request, res: Response) => {
-  try {
-    const { driverId } = req.params;
-
-    if (!mongoose.Types.ObjectId.isValid(driverId)) {
-      return res.status(400).json({
-        success: false,
-        error: "Invalid driver ID",
-      });
-    }
-
-    const citations = await Citation.getByDriver(
-      new mongoose.Types.ObjectId(driverId)
-    );
-
-    return res.status(200).json({
-      success: true,
-      count: citations.length,
-      data: citations,
-    });
-  } catch (error: any) {
-    console.error("Error fetching driver citations:", error);
-    return res.status(500).json({
-      success: false,
-      error: "Failed to fetch driver citations",
-      details: error.message,
-    });
-  }
-};
-
-
-export const getCitationsByEnforcer = async (req: Request, res: Response) => {
-  try {
-    const { enforcerId } = req.params;
-
-    if (!mongoose.Types.ObjectId.isValid(enforcerId)) {
-      return res.status(400).json({
-        success: false,
-        error: "Invalid enforcer ID",
-      });
-    }
-
-    const citations = await Citation.getByEnforcer(
-      new mongoose.Types.ObjectId(enforcerId)
-    );
-
-    return res.status(200).json({
-      success: true,
-      count: citations.length,
-      data: citations,
-    });
-  } catch (error: any) {
-    console.error("Error fetching enforcer citations:", error);
-    return res.status(500).json({
-      success: false,
-      error: "Failed to fetch enforcer citations",
-      details: error.message,
-    });
-  }
-};
-
-
-export const getOverdueCitations = async (req: Request, res: Response) => {
-  try {
-    const citations = await Citation.getOverdueCitations();
-
-    return res.status(200).json({
-      success: true,
-      count: citations.length,
-      data: citations,
-    });
-  } catch (error: any) {
-    console.error("Error fetching overdue citations:", error);
-    return res.status(500).json({
-      success: false,
-      error: "Failed to fetch overdue citations",
-      details: error.message,
-    });
-  }
-};
-
-
-export const contestCitation = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const { reason } = req.body;
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({
-        success: false,
-        error: "Invalid citation ID",
-      });
-    }
-
-    const citation = await Citation.findById(id);
-
-    if (!citation) {
-      return res.status(404).json({
-        success: false,
-        error: "Citation not found",
-      });
-    }
-
-    if (citation.isVoid) {
-      return res.status(400).json({
-        success: false,
-        error: "Cannot contest a voided citation",
-      });
-    }
-
-    if (citation.status === CitationStatus.CONTESTED) {
-      return res.status(400).json({
-        success: false,
-        error: "Citation is already contested",
-      });
-    }
-
-    if (citation.status === CitationStatus.PAID) {
-      return res.status(400).json({
-        success: false,
-        error: "Cannot contest a paid citation",
-      });
-    }
-
-    await citation.contestCitation(reason, req.user?.id);
-
-    return res.status(200).json({
-      success: true,
-      message: "Citation contested successfully",
-      data: citation,
-    });
-  } catch (error: any) {
-    console.error("Error contesting citation:", error);
-    return res.status(500).json({
-      success: false,
-      error: "Failed to contest citation",
-      details: error.message,
-    });
-  }
-};
-
-
-export const resolveContest = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const { resolution, approve } = req.body;
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({
-        success: false,
-        error: "Invalid citation ID",
-      });
-    }
-
-    const citation = await Citation.findById(id);
-
-    if (!citation) {
-      return res.status(404).json({
-        success: false,
-        error: "Citation not found",
-      });
-    }
-
-    if (citation.status !== CitationStatus.CONTESTED) {
-      return res.status(400).json({
-        success: false,
-        error: "Citation is not contested",
-      });
-    }
-
-    await CitationHelpers.resolveContest(
-      citation,
-      resolution,
-      req.user?.id,
-      approve
-    );
-
-    return res.status(200).json({
-      success: true,
-      message: `Contest ${approve ? "approved" : "rejected"} successfully`,
-      data: citation,
-    });
-  } catch (error: any) {
-    console.error("Error resolving contest:", error);
-    return res.status(500).json({
-      success: false,
-      error: "Failed to resolve contest",
-      details: error.message,
-    });
-  }
-};
-
 
 export const voidCitation = async (req: Request, res: Response) => {
   try {
@@ -592,7 +377,6 @@ export const getStatistics = async (req: Request, res: Response) => {
     });
   }
 };
-
 
 export const updateCitation = async (req: Request, res: Response) => {
   try {

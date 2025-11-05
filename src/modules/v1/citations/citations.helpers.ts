@@ -154,13 +154,6 @@ export async function searchCitations(
     query["vehicleInfo.plateNo"] = { $regex: filters.plateNo, $options: "i" };
   }
 
-  if (filters.licenseNo) {
-    query["driverInfo.licenseNo"] = {
-      $regex: filters.licenseNo,
-      $options: "i",
-    };
-  }
-
   if (filters.status) {
     query.status = filters.status;
   }
@@ -179,11 +172,24 @@ export async function searchCitations(
     if (filters.endDate) query.createdAt.$lte = filters.endDate;
   }
 
-  return CitationModel.find(query)
+  let citationQuery = CitationModel.find(query)
     .populate("driverId", "firstName lastName licenseNo")
     .populate("issuedBy", "badgeNo name")
     .sort({ createdAt: -1 })
     .limit(100);
+
+  // If searching by license number, we need to filter after population
+  let results = await citationQuery;
+
+  if (filters.licenseNo) {
+    results = results.filter((citation: any) => {
+      return citation.driverId?.licenseNo
+        ?.toLowerCase()
+        .includes(filters.licenseNo!.toLowerCase());
+    });
+  }
+
+  return results;
 }
 
 /**
