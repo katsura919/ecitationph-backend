@@ -6,6 +6,7 @@ import authAdminRoutes from "./authentication/admin/admin.auth.routes";
 import citationRoutes from "./citations/citations.routes";
 import driverRoutes from "./driver/driver.routes";
 import contestRoutes from "./contests/contest.routes";
+import vehicleRoutes from "./vehicles/vehicles.routes";
 
 const router = Router();
 
@@ -16,5 +17,6 @@ router.use("/auth/admin", authAdminRoutes);
 router.use("/citations", citationRoutes);
 router.use("/drivers", driverRoutes);
 router.use("/contests", contestRoutes);
+router.use("/vehicles", vehicleRoutes);
 
 export default router;

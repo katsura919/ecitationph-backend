@@ -50,12 +50,20 @@ export const createCitation = async (req: Request, res: Response) => {
       });
     }
 
-    const driver = await Driver.findById(driverId);
+    const driver = await Driver.findById(driverId).populate(
+      "vehicleOwnerId",
+      "firstName middleName lastName"
+    );
     if (!driver) {
       return res.status(404).json({
         success: false,
         error: "Driver not found",
       });
+    }
+
+    // If vehicleOwnerId is not provided but driver has a linked vehicle owner, auto-populate it
+    if (!vehicleInfo.vehicleOwnerId && driver.vehicleOwnerId) {
+      vehicleInfo.vehicleOwnerId = driver.vehicleOwnerId;
     }
 
     // Validate and fetch violations
