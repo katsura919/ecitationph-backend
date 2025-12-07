@@ -141,15 +141,6 @@ const DriverSchema: Schema = new Schema(
     birthDate: {
       type: Date,
       required: [true, "Birth date is required"],
-      validate: {
-        validator: function (value: Date) {
-          // Must be at least 18 years old
-          const eighteenYearsAgo = new Date();
-          eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
-          return value <= eighteenYearsAgo;
-        },
-        message: "Driver must be at least 18 years old",
-      },
     },
     weight: {
       type: Number,

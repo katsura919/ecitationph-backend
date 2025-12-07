@@ -141,7 +141,6 @@ const CitationSchema = new Schema<ICitation, ICitationModel>(
       type: Schema.Types.ObjectId,
       ref: "Vehicle",
       required: true,
-      index: true,
     },
 
     // Violations

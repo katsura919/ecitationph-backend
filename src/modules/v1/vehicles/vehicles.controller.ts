@@ -19,7 +19,6 @@ export const createVehicle = async (req: Request, res: Response) => {
       year,
       color,
       bodyMark,
-      registeredOwner,
       registrationDate,
       expirationDate,
       notes,
@@ -53,7 +52,6 @@ export const createVehicle = async (req: Request, res: Response) => {
       year,
       color,
       bodyMark,
-      registeredOwner,
       ownerFirstName,
       ownerMiddleName,
       ownerLastName,
@@ -233,7 +231,6 @@ export const updateVehicle = async (req: Request, res: Response) => {
       bodyMark,
       engineNo,
       chassisNo,
-      registeredOwner,
       registrationDate,
       expirationDate,
       notes,
@@ -263,8 +260,6 @@ export const updateVehicle = async (req: Request, res: Response) => {
     if (year !== undefined) vehicle.year = year;
     if (color !== undefined) vehicle.color = color;
     if (bodyMark !== undefined) vehicle.bodyMark = bodyMark;
-    if (registeredOwner !== undefined)
-      vehicle.registeredOwner = registeredOwner;
     if (registrationDate !== undefined)
       vehicle.registrationDate = registrationDate;
     if (expirationDate !== undefined) vehicle.expirationDate = expirationDate;

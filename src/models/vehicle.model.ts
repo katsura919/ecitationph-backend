@@ -22,7 +22,6 @@ export interface IVehicle extends Document {
   year?: number;
   color?: string;
   bodyMark?: string;
-  registeredOwner?: string;
   ownerFirstName?: string;
   ownerMiddleName?: string;
   ownerLastName?: string;
@@ -119,10 +118,6 @@ const VehicleSchema: Schema = new Schema(
     collection: "vehicles",
   }
 );
-
-VehicleSchema.index({ plateNo: 1 });
-VehicleSchema.index({ vehicleType: 1 });
-VehicleSchema.index({ createdAt: -1 });
 
 VehicleSchema.methods.isRegistrationExpired = function (): boolean {
   if (!this.expirationDate) return false;
