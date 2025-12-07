@@ -35,27 +35,33 @@ export const register = async (req: Request, res: Response) => {
       bloodType,
       conditions,
       eyesColor,
-      diCodes,
+      dlCodes,
       picture,
     } = req.body;
 
     // Check if driver already exists
-    const existingDriver = await Driver.findOne({
-      $or: [{ email }, { licenseNo: licenseNo.toUpperCase() }],
-    });
+    const existingChecks = [];
+    if (email) existingChecks.push({ email });
+    if (licenseNo) existingChecks.push({ licenseNo: licenseNo.toUpperCase() });
 
-    if (existingDriver) {
-      if (existingDriver.email === email) {
-        return res.status(400).json({
-          success: false,
-          error: "Email already registered",
-        });
-      }
-      if (existingDriver.licenseNo === licenseNo.toUpperCase()) {
-        return res.status(400).json({
-          success: false,
-          error: "License number already exists",
-        });
+    if (existingChecks.length > 0) {
+      const existingDriver = await Driver.findOne({
+        $or: existingChecks,
+      });
+
+      if (existingDriver) {
+        if (email && existingDriver.email === email) {
+          return res.status(400).json({
+            success: false,
+            error: "Email already registered",
+          });
+        }
+        if (licenseNo && existingDriver.licenseNo === licenseNo.toUpperCase()) {
+          return res.status(400).json({
+            success: false,
+            error: "License number already exists",
+          });
+        }
       }
     }
 
@@ -79,7 +85,7 @@ export const register = async (req: Request, res: Response) => {
       bloodType,
       conditions,
       eyesColor,
-      diCodes,
+      dlCodes,
       picture,
       status: DriverStatus.ACTIVE,
     });
@@ -115,7 +121,7 @@ export const register = async (req: Request, res: Response) => {
           bloodType: driver.bloodType,
           conditions: driver.conditions,
           eyesColor: driver.eyesColor,
-          diCodes: driver.diCodes,
+          dlCodes: driver.dlCodes,
           picture: driver.picture,
           status: driver.status,
         },
@@ -264,7 +270,7 @@ export const getMe = async (req: Request, res: Response) => {
         bloodType: driver.bloodType,
         conditions: driver.conditions,
         eyesColor: driver.eyesColor,
-        diCodes: driver.diCodes,
+        dlCodes: driver.dlCodes,
         picture: driver.picture,
         status: driver.status,
         createdAt: driver.createdAt,

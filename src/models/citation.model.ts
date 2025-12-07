@@ -50,14 +50,7 @@ export interface ICitation extends Document {
   driverId: mongoose.Types.ObjectId; // Reference to Driver model (required)
 
   // Vehicle Information
-  vehicleInfo: {
-    plateNo: string;
-    vehicleType: "PRIVATE" | "FOR_HIRE"; // Affects fine calculation
-    make?: string; // e.g., Toyota
-    model?: string; // e.g., Vios
-    color?: string;
-    vehicleOwnerId?: mongoose.Types.ObjectId; // Reference to VehicleOwner model (if registered)
-  };
+  vehicleId: mongoose.Types.ObjectId; // Reference to Vehicle model (required)
 
   // Violations
   violations: IViolationItem[]; // Array of violations committed
@@ -69,11 +62,6 @@ export interface ICitation extends Document {
 
   // Enforcer Information
   issuedBy: mongoose.Types.ObjectId; // Reference to Enforcer model
-  enforcerInfo: {
-    // Stored for historical reference
-    badgeNo: string;
-    name: string;
-  };
 
   // Location and Time
   location: ILocation; // Where the violation occurred
@@ -149,37 +137,39 @@ const CitationSchema = new Schema<ICitation, ICitationModel>(
     },
 
     // Vehicle Information
-    vehicleInfo: {
-      plateNo: { type: String, required: true, uppercase: true },
-      vehicleType: {
-        type: String,
-        enum: ["PRIVATE", "FOR_HIRE"],
-        required: true,
-      },
-      make: String,
-      model: String,
-      color: String,
-      vehicleOwnerId: {
-        type: Schema.Types.ObjectId,
-        ref: "VehicleOwner",
-      },
+    vehicleId: {
+      type: Schema.Types.ObjectId,
+      ref: "Vehicle",
+      required: true,
+      index: true,
     },
 
     // Violations
-    violations: [
-      {
-        violationId: {
-          type: Schema.Types.ObjectId,
-          ref: "Violation",
-          required: true,
+    violations: {
+      type: [
+        {
+          violationId: {
+            type: Schema.Types.ObjectId,
+            ref: "Violation",
+            required: true,
+          },
+          code: { type: String, required: true },
+          title: { type: String, required: true },
+          description: { type: String, required: true },
+          fineAmount: { type: Number, required: true },
+          offenseCount: { type: Number, default: 1 },
         },
-        code: { type: String, required: true },
-        title: { type: String, required: true },
-        description: { type: String, required: true },
-        fineAmount: { type: Number, required: true },
-        offenseCount: { type: Number, default: 1 },
-      },
-    ],
+      ],
+      required: true,
+      validate: [
+        {
+          validator: function (v: any[]) {
+            return v && v.length > 0;
+          },
+          message: "At least one violation is required",
+        },
+      ],
+    },
 
     // Financial Information
     totalAmount: {
@@ -203,10 +193,6 @@ const CitationSchema = new Schema<ICitation, ICitationModel>(
       type: Schema.Types.ObjectId,
       ref: "Enforcer",
       required: true,
-    },
-    enforcerInfo: {
-      badgeNo: { type: String, required: true },
-      name: { type: String, required: true },
     },
 
     // Location and Time
@@ -279,7 +265,7 @@ const CitationSchema = new Schema<ICitation, ICitationModel>(
 
 // Indexes for efficient querying
 CitationSchema.index({ driverId: 1 });
-CitationSchema.index({ "vehicleInfo.plateNo": 1 });
+CitationSchema.index({ vehicleId: 1 });
 CitationSchema.index({ issuedBy: 1 });
 CitationSchema.index({ status: 1 });
 CitationSchema.index({ dueDate: 1 });

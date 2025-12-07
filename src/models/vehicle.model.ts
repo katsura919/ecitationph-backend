@@ -11,16 +11,6 @@ export enum VehicleType {
 }
 
 /**
- * Vehicle Status Enum
- */
-export enum VehicleStatus {
-  ACTIVE = "ACTIVE",
-  INACTIVE = "INACTIVE",
-  IMPOUNDED = "IMPOUNDED",
-  SUSPENDED = "SUSPENDED",
-}
-
-/**
  * Vehicle Interface
  */
 export interface IVehicle extends Document {
@@ -33,23 +23,24 @@ export interface IVehicle extends Document {
   color?: string;
   bodyMark?: string;
   registeredOwner?: string;
-  ownerId: mongoose.Types.ObjectId;
+  ownerFirstName?: string;
+  ownerMiddleName?: string;
+  ownerLastName?: string;
   registrationDate?: Date;
   expirationDate?: Date;
-  status: VehicleStatus;
   notes?: string;
   createdAt: Date;
   updatedAt: Date;
   isRegistrationExpired(): boolean;
-  getOwnerName(): string;
+  getOwnerFullName(): string;
 }
 
 const VehicleSchema: Schema = new Schema(
   {
     plateNo: {
       type: String,
-      required: [true, "Plate number is required"],
       unique: true,
+      sparse: true,
       trim: true,
       uppercase: true,
       index: true,
@@ -97,26 +88,26 @@ const VehicleSchema: Schema = new Schema(
       trim: true,
       maxlength: [100, "Body mark must not exceed 100 characters"],
     },
-    ownerId: {
-      type: Schema.Types.ObjectId,
-      ref: "VehicleOwner",
-      index: true,
+    ownerFirstName: {
+      type: String,
+      trim: true,
+      maxlength: [50, "Owner first name must not exceed 50 characters"],
+    },
+    ownerMiddleName: {
+      type: String,
+      trim: true,
+      maxlength: [50, "Owner middle name must not exceed 50 characters"],
+    },
+    ownerLastName: {
+      type: String,
+      trim: true,
+      maxlength: [50, "Owner last name must not exceed 50 characters"],
     },
     registrationDate: {
       type: Date,
     },
     expirationDate: {
       type: Date,
-    },
-    status: {
-      type: String,
-      required: [true, "Status is required"],
-      enum: {
-        values: Object.values(VehicleStatus),
-        message: "{VALUE} is not a valid status",
-      },
-      default: VehicleStatus.ACTIVE,
-      index: true,
     },
     notes: {
       type: String,
@@ -129,8 +120,7 @@ const VehicleSchema: Schema = new Schema(
   }
 );
 
-VehicleSchema.index({ plateNo: 1, status: 1 });
-VehicleSchema.index({ ownerId: 1, status: 1 });
+VehicleSchema.index({ plateNo: 1 });
 VehicleSchema.index({ vehicleType: 1 });
 VehicleSchema.index({ createdAt: -1 });
 
@@ -139,25 +129,17 @@ VehicleSchema.methods.isRegistrationExpired = function (): boolean {
   return this.expirationDate < new Date();
 };
 
-VehicleSchema.methods.getOwnerName = function (): string {
-  if (this.populated("ownerId") && this.ownerId) {
-    return (this.ownerId as any).getFullName?.() || "Unknown";
-  }
-  return "Unknown";
+VehicleSchema.methods.getOwnerFullName = function (): string {
+  const nameParts = [
+    this.ownerFirstName,
+    this.ownerMiddleName,
+    this.ownerLastName,
+  ].filter(Boolean);
+  return nameParts.length > 0 ? nameParts.join(" ") : "Unknown";
 };
 
 VehicleSchema.statics.findByPlateNo = function (plateNo: string) {
   return this.findOne({ plateNo: plateNo.toUpperCase() });
-};
-
-VehicleSchema.statics.findByOwner = function (
-  ownerId: mongoose.Types.ObjectId
-) {
-  return this.find({ ownerId, status: VehicleStatus.ACTIVE });
-};
-
-VehicleSchema.statics.findActiveVehicles = function () {
-  return this.find({ status: VehicleStatus.ACTIVE });
 };
 
 VehicleSchema.statics.searchVehicles = function (searchTerm: string) {
@@ -167,8 +149,10 @@ VehicleSchema.statics.searchVehicles = function (searchTerm: string) {
       { plateNo: searchRegex },
       { make: searchRegex },
       { vehicleModel: searchRegex },
+      { ownerFirstName: searchRegex },
+      { ownerLastName: searchRegex },
     ],
-  }).populate("ownerId");
+  });
 };
 
 const Vehicle = mongoose.model<IVehicle>("Vehicle", VehicleSchema);

@@ -77,6 +77,24 @@ const updateCitationValidation = [
   body("dueDate").optional().isISO8601().withMessage("Invalid due date"),
 ];
 
+// Update ownership validation
+const updateOwnershipValidation = [
+  param("id").isMongoId().withMessage("Invalid citation ID"),
+  body("isDriverTheOwner")
+    .optional()
+    .isBoolean()
+    .withMessage("isDriverTheOwner must be a boolean"),
+  body("ownershipStatus")
+    .optional()
+    .isIn([
+      "DRIVER_IS_OWNER",
+      "DRIVER_NOT_OWNER",
+      "OWNER_UNKNOWN",
+      "UNVERIFIED",
+    ])
+    .withMessage("Invalid ownership status"),
+];
+
 /**
  * PUBLIC/AUTHENTICATED ROUTES
  */
@@ -126,6 +144,7 @@ router.put(
   validate(updateCitationValidation),
   updateCitation
 );
+
 
 // Void citation (Admin)
 router.delete(

@@ -38,7 +38,7 @@ export enum Sex {
  */
 export interface IDriver extends Document {
   driverID: string; // Unique driver identifier
-  licenseNo: string;
+  licenseNo?: string;
   firstName: string;
   middleName?: string;
   lastName: string;
@@ -46,7 +46,7 @@ export interface IDriver extends Document {
   sex: Sex;
   birthDate: Date;
   weight?: number; // in kg
-  height?: number; // in cm
+  height?: number; // in meters
 
   // Address breakdown
   address: {
@@ -66,17 +66,14 @@ export interface IDriver extends Document {
   conditions?: string[]; // Medical conditions or restrictions
   eyesColor?: string;
 
-  // DI Codes (Driving Restrictions/Conditions)
-  diCodes?: string[]; // e.g., ['1', '2'] for restriction codes
+  // DL Codes (Driving Restrictions/Conditions)
+  dlCodes?: string[]; // e.g., ['1', '2'] for restriction codes
 
   // Profile and authentication
   picture?: string; // URL or path to driver's photo
-  email: string;
+  email?: string;
   password: string;
   contactNo: string; // Contact number
-
-  // Vehicle ownership
-  vehicleOwnerId?: mongoose.Types.ObjectId; // Reference to VehicleOwner if driver owns vehicles
 
   status: DriverStatus;
 
@@ -102,8 +99,8 @@ const DriverSchema: Schema = new Schema(
     },
     licenseNo: {
       type: String,
-      required: [true, "License number is required"],
       unique: true,
+      sparse: true,
       trim: true,
       uppercase: true,
     },
@@ -156,13 +153,9 @@ const DriverSchema: Schema = new Schema(
     },
     weight: {
       type: Number,
-      min: [30, "Weight must be at least 30 kg"],
-      max: [300, "Weight must not exceed 300 kg"],
     },
     height: {
       type: Number,
-      min: [100, "Height must be at least 100 cm"],
-      max: [250, "Height must not exceed 250 cm"],
     },
 
     // Address breakdown
@@ -238,8 +231,8 @@ const DriverSchema: Schema = new Schema(
       maxlength: [20, "Eye color must not exceed 20 characters"],
     },
 
-    // DI Codes (Driving Restrictions)
-    diCodes: [
+    // DL Codes (Driving Restrictions)
+    dlCodes: [
       {
         type: String,
         trim: true,
@@ -253,11 +246,12 @@ const DriverSchema: Schema = new Schema(
     },
     email: {
       type: String,
-      required: [true, "Email is required"],
       unique: true,
+      sparse: true,
       trim: true,
       lowercase: true,
       match: [/^\S+@\S+\.\S+$/, "Please provide a valid email address"],
+      index: true,
     },
     password: {
       type: String,
@@ -270,13 +264,6 @@ const DriverSchema: Schema = new Schema(
       required: [true, "Contact number is required"],
       trim: true,
       match: [/^[0-9]{11}$/, "Please provide a valid 11-digit contact number"],
-    },
-
-    // Vehicle ownership
-    vehicleOwnerId: {
-      type: Schema.Types.ObjectId,
-      ref: "VehicleOwner",
-      index: true,
     },
 
     status: {
@@ -318,14 +305,22 @@ DriverSchema.pre<IDriver>("save", async function (next) {
  */
 DriverSchema.pre<IDriver>("save", async function (next) {
   if (!this.driverID) {
-    // Generate a unique driver ID (e.g., DRV-YYYYMMDD-XXXXXX)
-    const date = new Date();
-    const dateStr = date.toISOString().slice(0, 10).replace(/-/g, "");
-    const random = Math.floor(Math.random() * 1000000)
-      .toString()
-      .padStart(6, "0");
-    const timestamp = Date.now().toString().slice(-4); // Last 4 digits of timestamp
-    this.driverID = `DRV-${dateStr}-${timestamp}${random.slice(0, 2)}`;
+    // Generate a unique driver ID using counter (e.g., DRV-2025-000001)
+    const year = new Date().getFullYear();
+    const Driver = this.constructor as any;
+
+    // Find the last driver ID for this year
+    const lastDriver = await Driver.findOne({
+      driverID: new RegExp(`^DRV-${year}-`),
+    }).sort({ driverID: -1 });
+
+    let counter = 1;
+    if (lastDriver && lastDriver.driverID) {
+      const lastNumber = parseInt(lastDriver.driverID.split("-")[2]);
+      counter = isNaN(lastNumber) ? 1 : lastNumber + 1;
+    }
+
+    this.driverID = `DRV-${year}-${counter.toString().padStart(6, "0")}`;
   }
   next();
 });

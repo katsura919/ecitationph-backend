@@ -6,6 +6,7 @@ import Citation, {
 import Violation from "../../../models/violations.model";
 import Enforcer from "../../../models/enforcer.model";
 import Driver from "../../../models/driver.model";
+import Vehicle from "../../../models/vehicle.model";
 import mongoose from "mongoose";
 import * as CitationHelpers from "./citations.helpers";
 
@@ -13,7 +14,7 @@ export const createCitation = async (req: Request, res: Response) => {
   try {
     const {
       driverId,
-      vehicleInfo,
+      vehicleId,
       violationIds,
       location,
       violationDateTime,
@@ -50,10 +51,7 @@ export const createCitation = async (req: Request, res: Response) => {
       });
     }
 
-    const driver = await Driver.findById(driverId).populate(
-      "vehicleOwnerId",
-      "firstName middleName lastName"
-    );
+    const driver = await Driver.findById(driverId);
     if (!driver) {
       return res.status(404).json({
         success: false,
@@ -61,9 +59,20 @@ export const createCitation = async (req: Request, res: Response) => {
       });
     }
 
-    // If vehicleOwnerId is not provided but driver has a linked vehicle owner, auto-populate it
-    if (!vehicleInfo.vehicleOwnerId && driver.vehicleOwnerId) {
-      vehicleInfo.vehicleOwnerId = driver.vehicleOwnerId;
+    // Verify vehicle exists
+    if (!vehicleId) {
+      return res.status(400).json({
+        success: false,
+        error: "Vehicle ID is required",
+      });
+    }
+
+    const vehicle = await Vehicle.findById(vehicleId);
+    if (!vehicle) {
+      return res.status(404).json({
+        success: false,
+        error: "Vehicle not found",
+      });
     }
 
     // Validate and fetch violations
@@ -96,9 +105,9 @@ export const createCitation = async (req: Request, res: Response) => {
       let fineAmount = 0;
 
       if (violation.fineStructure === "FIXED" && violation.fixedFine) {
-        if (vehicleInfo.vehicleType === "PRIVATE") {
+        if (vehicle.vehicleType === "PRIVATE") {
           fineAmount = violation.fixedFine.private.driver;
-        } else if (vehicleInfo.vehicleType === "FOR_HIRE") {
+        } else if (vehicle.vehicleType === "FOR_HIRE") {
           fineAmount = violation.fixedFine.forHire.driver;
         }
       } else if (
@@ -107,9 +116,9 @@ export const createCitation = async (req: Request, res: Response) => {
       ) {
         // For now, default to first offense
         // In a real system, you'd check driver's violation history
-        if (vehicleInfo.vehicleType === "PRIVATE") {
+        if (vehicle.vehicleType === "PRIVATE") {
           fineAmount = violation.progressiveFine.private.driver.firstOffense;
-        } else if (vehicleInfo.vehicleType === "FOR_HIRE") {
+        } else if (vehicle.vehicleType === "FOR_HIRE") {
           fineAmount = violation.progressiveFine.forHire.driver.firstOffense;
         }
       }
@@ -142,16 +151,12 @@ export const createCitation = async (req: Request, res: Response) => {
     const citation = new Citation({
       citationNo,
       driverId,
-      vehicleInfo,
+      vehicleId,
       violations: violationItems,
       totalAmount,
       amountPaid: 0,
       amountDue: totalAmount,
       issuedBy: enforcer._id,
-      enforcerInfo: {
-        badgeNo: enforcer.badgeNo,
-        name: enforcer.name,
-      },
       location,
       violationDateTime: violationDateTime || new Date(),
       issuedAt: new Date(),
@@ -164,11 +169,22 @@ export const createCitation = async (req: Request, res: Response) => {
 
     await citation.save();
 
-    // Populate driver details before returning
-    await citation.populate(
-      "driverId",
-      "firstName middleName lastName licenseNo contactNo email"
-    );
+    // Populate references before returning
+    await citation.populate([
+      {
+        path: "driverId",
+        select: "firstName middleName lastName licenseNo contactNo email",
+      },
+      {
+        path: "vehicleId",
+        select:
+          "plateNo vehicleType make vehicleModel color ownerFirstName ownerMiddleName ownerLastName",
+      },
+      {
+        path: "issuedBy",
+        select: "badgeNo name",
+      },
+    ]);
 
     return res.status(201).json({
       success: true,
@@ -217,21 +233,12 @@ export const getAllCitations = async (req: Request, res: Response) => {
     if (search) {
       // General search across multiple fields
       const searchRegex = { $regex: search, $options: "i" };
-      query.$or = [
-        { citationNo: searchRegex },
-        { "vehicleInfo.plateNo": searchRegex },
-        { "enforcerInfo.badgeNo": searchRegex },
-        { "enforcerInfo.name": searchRegex },
-      ];
+      query.$or = [{ citationNo: searchRegex }];
     }
 
     // Specific field searches
     if (citationNo) {
       query.citationNo = { $regex: citationNo, $options: "i" };
-    }
-
-    if (plateNo) {
-      query["vehicleInfo.plateNo"] = { $regex: plateNo, $options: "i" };
     }
 
     // Date range filtering
@@ -246,6 +253,7 @@ export const getAllCitations = async (req: Request, res: Response) => {
 
     let citationQuery = Citation.find(query)
       .populate("driverId", "firstName lastName licenseNo")
+      .populate("vehicleId", "plateNo vehicleType make vehicleModel color")
       .populate("issuedBy", "badgeNo name")
       .sort(sort)
       .skip(skip)
@@ -253,7 +261,7 @@ export const getAllCitations = async (req: Request, res: Response) => {
 
     let citations = await citationQuery;
 
-    // Post-population filtering for license number (since it's in a referenced document)
+    // Post-population filtering for license number and plate number
     if (licenseNo) {
       citations = citations.filter((citation: any) => {
         return citation.driverId?.licenseNo
@@ -262,21 +270,41 @@ export const getAllCitations = async (req: Request, res: Response) => {
       });
     }
 
+    if (plateNo) {
+      citations = citations.filter((citation: any) => {
+        return citation.vehicleId?.plateNo
+          ?.toLowerCase()
+          .includes((plateNo as string).toLowerCase());
+      });
+    }
+
     // Get total count (need to run the query without pagination for accurate count)
     let totalQuery = Citation.find(query);
     let totalCitations = await totalQuery;
 
     // Apply post-population filtering to total count as well
-    if (licenseNo) {
-      const populatedTotalCitations = await Citation.find(query).populate(
-        "driverId",
-        "licenseNo"
-      );
+    if (licenseNo || plateNo) {
+      const populatedTotalCitations = await Citation.find(query)
+        .populate("driverId", "licenseNo")
+        .populate("vehicleId", "plateNo");
 
       totalCitations = populatedTotalCitations.filter((citation: any) => {
-        return citation.driverId?.licenseNo
-          ?.toLowerCase()
-          .includes((licenseNo as string).toLowerCase());
+        let matches = true;
+        if (licenseNo) {
+          matches =
+            matches &&
+            citation.driverId?.licenseNo
+              ?.toLowerCase()
+              .includes((licenseNo as string).toLowerCase());
+        }
+        if (plateNo) {
+          matches =
+            matches &&
+            citation.vehicleId?.plateNo
+              ?.toLowerCase()
+              .includes((plateNo as string).toLowerCase());
+        }
+        return matches;
       });
     }
 
@@ -326,6 +354,10 @@ export const getCitationById = async (req: Request, res: Response) => {
 
     const citation = await Citation.findById(id)
       .populate("driverId", "firstName lastName licenseNo contactNo")
+      .populate(
+        "vehicleId",
+        "plateNo vehicleType make vehicleModel color ownerFirstName ownerMiddleName ownerLastName"
+      )
       .populate("issuedBy", "badgeNo name email contactNo")
       .populate("violations.violationId");
 
@@ -356,6 +388,10 @@ export const getCitationByNumber = async (req: Request, res: Response) => {
 
     const citation = await Citation.findOne({ citationNo })
       .populate("driverId", "firstName lastName licenseNo")
+      .populate(
+        "vehicleId",
+        "plateNo vehicleType make vehicleModel color ownerFirstName ownerMiddleName ownerLastName"
+      )
       .populate("issuedBy", "badgeNo name")
       .populate("violations.violationId");
 

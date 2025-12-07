@@ -1,18 +1,11 @@
 import { Request, Response } from "express";
-import Vehicle, {
-  IVehicle,
-  VehicleStatus,
-  VehicleType,
-} from "../../../models/vehicle.model";
-import VehicleOwner, {
-  VehicleOwnerStatus,
-} from "../../../models/vehicle.owner.model";
+import Vehicle, { IVehicle, VehicleType } from "../../../models/vehicle.model";
 import Driver from "../../../models/driver.model";
 import mongoose from "mongoose";
 
 /**
  * @route   POST /api/v1/vehicles
- * @desc    Create a new vehicle with owner
+ * @desc    Create a new vehicle with owner information
  * @access  Public (for testing) / Private (in production)
  */
 export const createVehicle = async (req: Request, res: Response) => {
@@ -30,55 +23,29 @@ export const createVehicle = async (req: Request, res: Response) => {
       registrationDate,
       expirationDate,
       notes,
-      owner,
+      ownerFirstName,
+      ownerMiddleName,
+      ownerLastName,
     } = req.body;
 
-    // Validate required fields
-    if (!plateNo) {
-      return res.status(400).json({
-        success: false,
-        error: "Plate number is required",
+    // Check if vehicle with this plate number already exists (only if plateNo provided)
+    if (plateNo) {
+      const existingVehicle = await Vehicle.findOne({
+        plateNo: plateNo.toUpperCase(),
       });
+
+      if (existingVehicle) {
+        return res.status(409).json({
+          success: false,
+          error: "Vehicle with this plate number already exists",
+          data: existingVehicle,
+        });
+      }
     }
 
-    // Check if vehicle with this plate number already exists
-    const existingVehicle = await Vehicle.findOne({
-      plateNo: plateNo.toUpperCase(),
-    });
-
-    if (existingVehicle) {
-      return res.status(409).json({
-        success: false,
-        error: "Vehicle with this plate number already exists",
-        data: existingVehicle,
-      });
-    }
-
-    // If owner information is provided, create or find the owner
-    let ownerId: mongoose.Types.ObjectId;
-
-    if (owner) {
-      // Create new vehicle owner
-      const vehicleOwner = new VehicleOwner({
-        firstName: owner.firstName,
-        middleName: owner.middleName,
-        lastName: owner.lastName,
-        status: VehicleOwnerStatus.ACTIVE,
-      });
-
-      await vehicleOwner.save();
-
-      ownerId = vehicleOwner._id as mongoose.Types.ObjectId;
-    } else {
-      return res.status(400).json({
-        success: false,
-        error: "Owner information is required",
-      });
-    }
-
-    // Create the vehicle
+    // Create the vehicle with owner information
     const vehicle = new Vehicle({
-      plateNo: plateNo.toUpperCase(),
+      plateNo: plateNo ? plateNo.toUpperCase() : undefined,
       vehicleType: vehicleType || VehicleType.PRIVATE,
       classification,
       make,
@@ -87,17 +54,15 @@ export const createVehicle = async (req: Request, res: Response) => {
       color,
       bodyMark,
       registeredOwner,
-      ownerId,
+      ownerFirstName,
+      ownerMiddleName,
+      ownerLastName,
       registrationDate,
       expirationDate,
-      status: VehicleStatus.ACTIVE,
       notes,
     });
 
     await vehicle.save();
-
-    // Populate owner details before returning
-    await vehicle.populate("ownerId", "firstName middleName lastName");
 
     return res.status(201).json({
       success: true,
@@ -121,15 +86,7 @@ export const createVehicle = async (req: Request, res: Response) => {
  */
 export const searchVehicles = async (req: Request, res: Response) => {
   try {
-    const {
-      plateNo,
-      search,
-      vehicleType,
-      status,
-      ownerId,
-      page = 1,
-      limit = 20,
-    } = req.query;
+    const { plateNo, search, vehicleType, page = 1, limit = 20 } = req.query;
 
     const query: any = {};
 
@@ -145,6 +102,8 @@ export const searchVehicles = async (req: Request, res: Response) => {
         { plateNo: searchRegex },
         { make: searchRegex },
         { vehicleModel: searchRegex },
+        { ownerFirstName: searchRegex },
+        { ownerLastName: searchRegex },
       ];
     }
 
@@ -153,23 +112,9 @@ export const searchVehicles = async (req: Request, res: Response) => {
       query.vehicleType = vehicleType;
     }
 
-    // Filter by status
-    if (status) {
-      query.status = status;
-    } else {
-      // Default to active vehicles only
-      query.status = VehicleStatus.ACTIVE;
-    }
-
-    // Filter by owner
-    if (ownerId) {
-      query.ownerId = ownerId;
-    }
-
     const skip = (Number(page) - 1) * Number(limit);
 
     const vehicles = await Vehicle.find(query)
-      .populate("ownerId", "firstName middleName lastName")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(Number(limit));
@@ -212,10 +157,7 @@ export const getVehicleById = async (req: Request, res: Response) => {
       });
     }
 
-    const vehicle = await Vehicle.findById(id).populate(
-      "ownerId",
-      "firstName middleName lastName"
-    );
+    const vehicle = await Vehicle.findById(id);
 
     if (!vehicle) {
       return res.status(404).json({
@@ -249,7 +191,7 @@ export const getVehicleByPlateNo = async (req: Request, res: Response) => {
 
     const vehicle = await Vehicle.findOne({
       plateNo: plateNo.toUpperCase(),
-    }).populate("ownerId", "firstName middleName lastName");
+    });
 
     if (!vehicle) {
       return res.status(404).json({
@@ -294,7 +236,6 @@ export const updateVehicle = async (req: Request, res: Response) => {
       registeredOwner,
       registrationDate,
       expirationDate,
-      status,
       notes,
     } = req.body;
 
@@ -327,12 +268,9 @@ export const updateVehicle = async (req: Request, res: Response) => {
     if (registrationDate !== undefined)
       vehicle.registrationDate = registrationDate;
     if (expirationDate !== undefined) vehicle.expirationDate = expirationDate;
-    if (status !== undefined) vehicle.status = status;
     if (notes !== undefined) vehicle.notes = notes;
 
     await vehicle.save();
-
-    await vehicle.populate("ownerId", "firstName middleName lastName");
 
     return res.status(200).json({
       success: true,
@@ -351,7 +289,7 @@ export const updateVehicle = async (req: Request, res: Response) => {
 
 /**
  * @route   DELETE /api/v1/vehicles/:id
- * @desc    Delete vehicle (soft delete by setting status to INACTIVE)
+ * @desc    Delete vehicle
  * @access  Private
  */
 export const deleteVehicle = async (req: Request, res: Response) => {
@@ -365,7 +303,7 @@ export const deleteVehicle = async (req: Request, res: Response) => {
       });
     }
 
-    const vehicle = await Vehicle.findById(id);
+    const vehicle = await Vehicle.findByIdAndDelete(id);
 
     if (!vehicle) {
       return res.status(404).json({
@@ -373,10 +311,6 @@ export const deleteVehicle = async (req: Request, res: Response) => {
         error: "Vehicle not found",
       });
     }
-
-    // Soft delete
-    vehicle.status = VehicleStatus.INACTIVE;
-    await vehicle.save();
 
     return res.status(200).json({
       success: true,
@@ -418,25 +352,14 @@ export const getVehiclesByDriver = async (req: Request, res: Response) => {
       });
     }
 
-    // If driver doesn't have a vehicle owner ID, return empty array
-    if (!driver.vehicleOwnerId) {
-      return res.status(200).json({
-        success: true,
-        data: [],
-        message: "Driver does not own any vehicles",
-      });
-    }
-
-    // Find all vehicles owned by this driver's vehicle owner
-    const vehicles = await Vehicle.find({
-      ownerId: driver.vehicleOwnerId,
-      status: VehicleStatus.ACTIVE,
-    }).populate("ownerId", "firstName middleName lastName");
-
+    // Note: Vehicle ownership is now tracked directly in Vehicle model with owner name fields
+    // This endpoint returns empty array since we no longer have VehicleOwner table
+    // In the future, this could be enhanced to match vehicles by driver's name
     return res.status(200).json({
       success: true,
-      data: vehicles,
-      count: vehicles.length,
+      data: [],
+      message:
+        "Vehicle ownership tracking has been simplified. Use vehicle search instead.",
     });
   } catch (error: any) {
     console.error("Error fetching driver vehicles:", error);

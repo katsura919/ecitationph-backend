@@ -1,21 +1,21 @@
-import mongoose, { Schema, Document } from 'mongoose';
-import bcrypt from 'bcryptjs';
+import mongoose, { Schema, Document } from "mongoose";
+import bcrypt from "bcryptjs";
 
 /**
  * User Types - Admin and Treasurer only
  */
 export enum UserType {
-  ADMIN = 'admin',
-  TREASURER = 'treasurer'
+  ADMIN = "ADMIN",
+  TREASURER = "TREASURER",
 }
 
 /**
  * User Status
  */
 export enum UserStatus {
-  ACTIVE = 'active',
-  INACTIVE = 'inactive',
-  SUSPENDED = 'suspended'
+  ACTIVE = "ACTIVE",
+  INACTIVE = "INACTIVE",
+  SUSPENDED = "SUSPENDED",
 }
 
 /**
@@ -35,12 +35,12 @@ export interface IUser extends Document {
   };
   status: UserStatus;
   profilePic?: string;
-  
+
   // User specific fields
   badgeNo: string;
   name: string;
   username: string;
-  
+
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -61,73 +61,73 @@ const UserSchema: Schema = new Schema(
   {
     userType: {
       type: String,
-      required: [true, 'User type is required'],
+      required: [true, "User type is required"],
       enum: {
         values: Object.values(UserType),
-        message: '{VALUE} is not a valid user type',
+        message: "{VALUE} is not a valid user type",
       },
       index: true,
     },
-    
+
     // Common fields for all user types
     email: {
       type: String,
-      required: [true, 'Email is required'],
+      required: [true, "Email is required"],
       unique: true,
       trim: true,
       lowercase: true,
-      match: [/^\S+@\S+\.\S+$/, 'Please provide a valid email address'],
+      match: [/^\S+@\S+\.\S+$/, "Please provide a valid email address"],
     },
     password: {
       type: String,
-      required: [true, 'Password is required'],
-      minlength: [6, 'Password must be at least 6 characters'],
+      required: [true, "Password is required"],
+      minlength: [6, "Password must be at least 6 characters"],
       select: false, // Don't return password by default in queries
     },
     contactNo: {
       type: String,
-      required: [true, 'Contact number is required'],
+      required: [true, "Contact number is required"],
       trim: true,
-      match: [/^[0-9]{11}$/, 'Please provide a valid 11-digit contact number'],
+      match: [/^[0-9]{11}$/, "Please provide a valid 11-digit contact number"],
     },
     address: {
       street: {
         type: String,
-        required: [true, 'Street is required'],
+        required: [true, "Street is required"],
         trim: true,
-        maxlength: [100, 'Street must not exceed 100 characters'],
+        maxlength: [100, "Street must not exceed 100 characters"],
       },
       barangay: {
         type: String,
-        required: [true, 'Barangay is required'],
+        required: [true, "Barangay is required"],
         trim: true,
-        maxlength: [100, 'Barangay must not exceed 100 characters'],
+        maxlength: [100, "Barangay must not exceed 100 characters"],
       },
       city: {
         type: String,
-        required: [true, 'City is required'],
+        required: [true, "City is required"],
         trim: true,
-        maxlength: [100, 'City must not exceed 100 characters'],
+        maxlength: [100, "City must not exceed 100 characters"],
       },
       province: {
         type: String,
-        required: [true, 'Province is required'],
+        required: [true, "Province is required"],
         trim: true,
-        maxlength: [100, 'Province must not exceed 100 characters'],
+        maxlength: [100, "Province must not exceed 100 characters"],
       },
       postalCode: {
         type: String,
-        required: [true, 'Postal code is required'],
+        required: [true, "Postal code is required"],
         trim: true,
-        match: [/^[0-9]{4}$/, 'Please provide a valid 4-digit postal code'],
+        match: [/^[0-9]{4}$/, "Please provide a valid 4-digit postal code"],
       },
     },
     status: {
       type: String,
-      required: [true, 'Status is required'],
+      required: [true, "Status is required"],
       enum: {
         values: Object.values(UserStatus),
-        message: '{VALUE} is not a valid status',
+        message: "{VALUE} is not a valid status",
       },
       default: UserStatus.ACTIVE,
       index: true,
@@ -136,44 +136,43 @@ const UserSchema: Schema = new Schema(
       type: String,
       default: null,
     },
-    
+
     // User specific fields (required)
     badgeNo: {
       type: String,
-      required: [true, 'Badge number is required'],
+      required: [true, "Badge number is required"],
       unique: true,
       trim: true,
     },
     name: {
       type: String,
-      required: [true, 'Name is required'],
+      required: [true, "Name is required"],
       trim: true,
-      minlength: [2, 'Name must be at least 2 characters'],
-      maxlength: [100, 'Name must not exceed 100 characters'],
+      minlength: [2, "Name must be at least 2 characters"],
+      maxlength: [100, "Name must not exceed 100 characters"],
     },
     username: {
       type: String,
-      required: [true, 'Username is required'],
+      required: [true, "Username is required"],
       unique: true,
       trim: true,
-      minlength: [3, 'Username must be at least 3 characters'],
-      maxlength: [50, 'Username must not exceed 50 characters'],
+      minlength: [3, "Username must be at least 3 characters"],
+      maxlength: [50, "Username must not exceed 50 characters"],
+      index: true,
     },
   },
   {
     timestamps: true, // Automatically adds createdAt and updatedAt
-    discriminatorKey: 'userType', // Uses userType field for discrimination
+    discriminatorKey: "userType", // Uses userType field for discrimination
   }
 );
-
-
 
 /**
  * Hash password before saving
  */
-UserSchema.pre<IUser>('save', async function (next) {
+UserSchema.pre<IUser>("save", async function (next) {
   // Only hash the password if it has been modified (or is new)
-  if (!this.isModified('password')) {
+  if (!this.isModified("password")) {
     return next();
   }
 
@@ -203,13 +202,16 @@ UserSchema.methods.comparePassword = async function (
  * Method to get full name
  */
 UserSchema.methods.getFullName = function (): string {
-  return this.name || '';
+  return this.name || "";
 };
 
 /**
  * Static method: Find users by type
  */
-UserSchema.statics.findByType = function (userType: UserType, status?: UserStatus) {
+UserSchema.statics.findByType = function (
+  userType: UserType,
+  status?: UserStatus
+) {
   const query: any = { userType };
   if (status) {
     query.status = status;
@@ -232,6 +234,6 @@ UserSchema.statics.findByUsername = function (username: string) {
 };
 
 // Export the base model
-const User = mongoose.model<IUser>('User', UserSchema);
+const User = mongoose.model<IUser>("User", UserSchema);
 
 export default User;

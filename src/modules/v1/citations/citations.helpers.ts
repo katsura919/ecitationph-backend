@@ -150,10 +150,6 @@ export async function searchCitations(
     query.citationNo = { $regex: filters.citationNo, $options: "i" };
   }
 
-  if (filters.plateNo) {
-    query["vehicleInfo.plateNo"] = { $regex: filters.plateNo, $options: "i" };
-  }
-
   if (filters.status) {
     query.status = filters.status;
   }
@@ -174,11 +170,12 @@ export async function searchCitations(
 
   let citationQuery = CitationModel.find(query)
     .populate("driverId", "firstName lastName licenseNo")
+    .populate("vehicleId", "plateNo vehicleType")
     .populate("issuedBy", "badgeNo name")
     .sort({ createdAt: -1 })
     .limit(100);
 
-  // If searching by license number, we need to filter after population
+  // If searching by license number or plate number, we need to filter after population
   let results = await citationQuery;
 
   if (filters.licenseNo) {
@@ -186,6 +183,14 @@ export async function searchCitations(
       return citation.driverId?.licenseNo
         ?.toLowerCase()
         .includes(filters.licenseNo!.toLowerCase());
+    });
+  }
+
+  if (filters.plateNo) {
+    results = results.filter((citation: any) => {
+      return citation.vehicleId?.plateNo
+        ?.toLowerCase()
+        .includes(filters.plateNo!.toLowerCase());
     });
   }
 
@@ -316,13 +321,13 @@ export async function updateStatus(citation: ICitation): Promise<ICitation> {
 
 /**
  * Get citation summary for display
+ * Note: vehicleId and issuedBy need to be populated to get their details
  */
 export function getCitationSummary(citation: ICitation): any {
-  // Note: driverId needs to be populated to get driver name
   return {
     citationNo: citation.citationNo,
     driverId: citation.driverId,
-    plateNo: citation.vehicleInfo.plateNo,
+    vehicleId: citation.vehicleId,
     violationsCount: citation.violations.length,
     totalAmount: citation.totalAmount,
     amountPaid: citation.amountPaid,
@@ -333,6 +338,6 @@ export function getCitationSummary(citation: ICitation): any {
     dueDate: citation.dueDate,
     isOverdue: checkOverdue(citation),
     location: `${citation.location.barangay}, ${citation.location.city}`,
-    enforcerBadgeNo: citation.enforcerInfo.badgeNo,
+    issuedBy: citation.issuedBy,
   };
 }
