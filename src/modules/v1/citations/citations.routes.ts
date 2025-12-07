@@ -25,14 +25,11 @@ const createCitationValidation = [
     .withMessage("Driver ID is required")
     .isMongoId()
     .withMessage("Invalid driver ID"),
-  body("vehicleInfo.plateNo")
-    .trim()
+  body("vehicleId")
     .notEmpty()
-    .withMessage("Plate number is required")
-    .toUpperCase(),
-  body("vehicleInfo.vehicleType")
-    .isIn(["PRIVATE", "FOR_HIRE"])
-    .withMessage("Vehicle type must be PRIVATE or FOR_HIRE"),
+    .withMessage("Vehicle ID is required")
+    .isMongoId()
+    .withMessage("Invalid vehicle ID"),
   body("violationIds")
     .isArray({ min: 1 })
     .withMessage("At least one violation must be specified"),
@@ -46,6 +43,14 @@ const createCitationValidation = [
     .trim()
     .notEmpty()
     .withMessage("Province is required"),
+  body("location.coordinates.latitude")
+    .optional()
+    .isFloat()
+    .withMessage("Invalid latitude"),
+  body("location.coordinates.longitude")
+    .optional()
+    .isFloat()
+    .withMessage("Invalid longitude"),
   body("violationDateTime")
     .optional()
     .isISO8601()
@@ -144,7 +149,6 @@ router.put(
   validate(updateCitationValidation),
   updateCitation
 );
-
 
 // Void citation (Admin)
 router.delete(
