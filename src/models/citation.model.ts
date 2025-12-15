@@ -275,6 +275,11 @@ CitationSchema.index({ createdAt: -1 });
 CitationSchema.index({ status: 1, dueDate: 1 });
 CitationSchema.index({ driverId: 1, status: 1 });
 
+// Indexes for progressive fine calculation (violation history lookup)
+CitationSchema.index({ driverId: 1, "violations.violationId": 1 });
+CitationSchema.index({ driverId: 1, violationDateTime: -1 });
+CitationSchema.index({ status: 1, isVoid: 1 });
+
 /**
  * Pre-save hook: Calculate amounts before saving
  */

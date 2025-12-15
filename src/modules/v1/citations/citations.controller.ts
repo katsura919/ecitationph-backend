@@ -11,6 +11,9 @@ import mongoose from "mongoose";
 import * as CitationHelpers from "./citations.helpers";
 
 export const createCitation = async (req: Request, res: Response) => {
+  const requestId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  console.log(`[Citation Create] Request ID: ${requestId} - Started`);
+
   try {
     const {
       driverId,
@@ -27,6 +30,9 @@ export const createCitation = async (req: Request, res: Response) => {
     const enforcerId = req.user?.id || req.headers["x-enforcer-id"];
 
     if (!enforcerId) {
+      console.log(
+        `[Citation Create] Request ID: ${requestId} - No enforcer ID`
+      );
       return res.status(401).json({
         success: false,
         error:
@@ -100,38 +106,109 @@ export const createCitation = async (req: Request, res: Response) => {
     }
 
     // Build violation items with calculated fines
-    const violationItems = violations.map((violation) => {
-      // Calculate fine based on vehicle type and offender type
-      let fineAmount = 0;
+    // Now with automatic offense counting for progressive fines
+    const violationItems = await Promise.all(
+      violations.map(async (violation) => {
+        let fineAmount = 0;
+        let offenseCount = 1;
 
-      if (violation.fineStructure === "FIXED" && violation.fixedFine) {
-        if (vehicle.vehicleType === "PRIVATE") {
-          fineAmount = violation.fixedFine.private.driver;
-        } else if (vehicle.vehicleType === "FOR_HIRE") {
-          fineAmount = violation.fixedFine.forHire.driver;
-        }
-      } else if (
-        violation.fineStructure === "PROGRESSIVE" &&
-        violation.progressiveFine
-      ) {
-        // For now, default to first offense
-        // In a real system, you'd check driver's violation history
-        if (vehicle.vehicleType === "PRIVATE") {
-          fineAmount = violation.progressiveFine.private.driver.firstOffense;
-        } else if (vehicle.vehicleType === "FOR_HIRE") {
-          fineAmount = violation.progressiveFine.forHire.driver.firstOffense;
-        }
-      }
+        console.log(
+          `[Violation Processing] ${violation.code} - Structure: ${violation.fineStructure}`
+        );
 
-      return {
-        violationId: violation._id,
-        code: violation.code,
-        title: violation.title,
-        description: violation.description,
-        fineAmount,
-        offenseCount: 1, // Default to first offense
-      };
-    });
+        if (violation.fineStructure === "FIXED" && violation.fixedFine) {
+          // Fixed fines - same amount regardless of offense count
+          console.log(`[Fixed Fine] Processing ${violation.code} as FIXED`);
+          if (vehicle.vehicleType === "PRIVATE") {
+            fineAmount = violation.fixedFine.private.driver;
+          } else if (vehicle.vehicleType === "FOR_HIRE") {
+            fineAmount = violation.fixedFine.forHire.driver;
+          }
+          console.log(
+            `[Fixed Fine] Amount for ${violation.code}: ₱${fineAmount}`
+          );
+        } else if (
+          violation.fineStructure === "PROGRESSIVE" &&
+          violation.progressiveFine
+        ) {
+          // Progressive fines - check driver's violation history
+          // Query previous citations for this driver with the same violation
+          const previousCitations = await Citation.find({
+            driverId: driverId,
+            "violations.violationId": violation._id,
+            status: {
+              $in: [
+                CitationStatus.PAID,
+                CitationStatus.PENDING,
+                CitationStatus.OVERDUE,
+                CitationStatus.PARTIALLY_PAID,
+              ],
+            },
+            isVoid: false,
+          }).select("violations");
+
+          console.log(
+            `[Progressive Fine] Checking history for violation ${violation.code} (${violation._id})`
+          );
+          console.log(
+            `[Progressive Fine] Found ${previousCitations.length} previous citations`
+          );
+
+          // Count total occurrences of this specific violation
+          const violationIdStr = (
+            violation._id as mongoose.Types.ObjectId
+          ).toString();
+          offenseCount =
+            previousCitations.reduce((count, citation) => {
+              const violationCount = citation.violations.filter(
+                (v: any) =>
+                  v.violationId && v.violationId.toString() === violationIdStr
+              ).length;
+              return count + violationCount;
+            }, 0) + 1; // +1 for current offense
+
+          console.log(
+            `[Progressive Fine] Offense count for ${violation.code}: ${offenseCount}`
+          );
+
+          // Get appropriate fine schedule based on vehicle type
+          const fineSchedule =
+            vehicle.vehicleType === "PRIVATE"
+              ? violation.progressiveFine.private.driver
+              : violation.progressiveFine.forHire.driver;
+
+          // Determine fine based on offense count
+          if (offenseCount === 1) {
+            fineAmount = fineSchedule.firstOffense;
+          } else if (offenseCount === 2 && fineSchedule.secondOffense) {
+            fineAmount = fineSchedule.secondOffense;
+          } else if (offenseCount === 3 && fineSchedule.thirdOffense) {
+            fineAmount = fineSchedule.thirdOffense;
+          } else if (fineSchedule.subsequentOffense) {
+            fineAmount = fineSchedule.subsequentOffense;
+          } else {
+            // Fallback to highest available fine if subsequent is not defined
+            fineAmount =
+              fineSchedule.thirdOffense ||
+              fineSchedule.secondOffense ||
+              fineSchedule.firstOffense;
+          }
+
+          console.log(
+            `[Progressive Fine] Final fine for ${violation.code}: ₱${fineAmount}`
+          );
+        }
+
+        return {
+          violationId: violation._id,
+          code: violation.code,
+          title: violation.title,
+          description: violation.description,
+          fineAmount,
+          offenseCount, // Dynamic offense count based on history
+        };
+      })
+    );
 
     // Calculate total amount
     const totalAmount = violationItems.reduce(
@@ -169,6 +246,10 @@ export const createCitation = async (req: Request, res: Response) => {
 
     await citation.save();
 
+    console.log(
+      `[Citation Create] Request ID: ${requestId} - Success - Citation No: ${citationNo}`
+    );
+
     // Populate references before returning
     await citation.populate([
       {
@@ -192,7 +273,7 @@ export const createCitation = async (req: Request, res: Response) => {
       data: citation,
     });
   } catch (error: any) {
-    console.error("Error creating citation:", error);
+    console.error(`[Citation Create] Request ID: ${requestId} - Error:`, error);
     return res.status(500).json({
       success: false,
       error: "Failed to create citation",
