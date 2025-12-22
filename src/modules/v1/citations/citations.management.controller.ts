@@ -3,12 +3,7 @@ import Citation, {
   ICitation,
   CitationStatus,
 } from "../../../models/citation.model";
-import Violation from "../../../models/violations.model";
-import Enforcer from "../../../models/enforcer.model";
-import Driver from "../../../models/driver.model";
-import Vehicle from "../../../models/vehicle.model";
 import mongoose from "mongoose";
-import * as CitationHelpers from "./citations.helpers";
 
 export const getAllCitations = async (req: Request, res: Response) => {
   try {
@@ -22,8 +17,10 @@ export const getAllCitations = async (req: Request, res: Response) => {
       licenseNo,
       startDate,
       endDate,
+      startTime,
+      endTime,
       page = 1,
-      limit = 20,
+      limit = 12,
       sortBy = "createdAt",
       sortOrder = "desc",
     } = req.query;
@@ -31,19 +28,20 @@ export const getAllCitations = async (req: Request, res: Response) => {
     const query: any = { isVoid: false };
 
     // Only filter by status if explicitly provided
+    // Support both single status and array of statuses
     if (status && status !== "all") {
-      query.status = status;
+      if (Array.isArray(status)) {
+        query.status = { $in: status };
+      } else if (typeof status === "string" && status.includes(",")) {
+        // Support comma-separated statuses
+        query.status = { $in: status.split(",").map((s) => s.trim()) };
+      } else {
+        query.status = status;
+      }
     }
 
     if (enforcerId) query.issuedBy = enforcerId;
     if (driverId) query.driverId = driverId;
-
-    // Search functionality
-    if (search) {
-      // General search across multiple fields
-      const searchRegex = { $regex: search, $options: "i" };
-      query.$or = [{ citationNo: searchRegex }];
-    }
 
     // Specific field searches
     if (citationNo) {
@@ -53,71 +51,166 @@ export const getAllCitations = async (req: Request, res: Response) => {
     // Date range filtering
     if (startDate || endDate) {
       query.createdAt = {};
-      if (startDate) query.createdAt.$gte = new Date(startDate as string);
-      if (endDate) query.createdAt.$lte = new Date(endDate as string);
+      if (startDate) {
+        const start = new Date(startDate as string);
+        if (startTime) {
+          const [hours, minutes] = (startTime as string).split(":");
+          start.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+        }
+        query.createdAt.$gte = start;
+      }
+      if (endDate) {
+        const end = new Date(endDate as string);
+        if (endTime) {
+          const [hours, minutes] = (endTime as string).split(":");
+          end.setHours(parseInt(hours), parseInt(minutes), 59, 999);
+        } else {
+          end.setHours(23, 59, 59, 999);
+        }
+        query.createdAt.$lte = end;
+      }
     }
 
     const skip = (Number(page) - 1) * Number(limit);
     const sort: any = { [sortBy as string]: sortOrder === "desc" ? -1 : 1 };
 
-    let citationQuery = Citation.find(query)
-      .populate("driverId", "firstName lastName licenseNo")
-      .populate("vehicleId", "plateNo vehicleType make vehicleModel color")
-      .populate("issuedBy", "badgeNo name")
-      .sort(sort)
-      .skip(skip)
-      .limit(Number(limit));
+    // Build aggregation pipeline for searching with driver data
+    const aggregationPipeline: any[] = [
+      { $match: query },
+      {
+        $lookup: {
+          from: "drivers",
+          localField: "driverId",
+          foreignField: "_id",
+          as: "driverData",
+        },
+      },
+      {
+        $unwind: {
+          path: "$driverData",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $lookup: {
+          from: "enforcers",
+          localField: "issuedBy",
+          foreignField: "_id",
+          as: "enforcerData",
+        },
+      },
+      {
+        $unwind: {
+          path: "$enforcerData",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+    ];
 
-    let citations = await citationQuery;
+    // Add search filter if provided (searches citation number, driver name, and license number)
+    if (search) {
+      const searchRegex = { $regex: search, $options: "i" };
+      aggregationPipeline.push({
+        $match: {
+          $or: [
+            { citationNo: searchRegex },
+            { "driverData.firstName": searchRegex },
+            { "driverData.middleName": searchRegex },
+            { "driverData.lastName": searchRegex },
+            { "driverData.licenseNo": searchRegex },
+          ],
+        },
+      });
+    }
 
-    // Post-population filtering for license number and plate number
+    // Add license number filter if provided
     if (licenseNo) {
-      citations = citations.filter((citation: any) => {
-        return citation.driverId?.licenseNo
-          ?.toLowerCase()
-          .includes((licenseNo as string).toLowerCase());
+      aggregationPipeline.push({
+        $match: {
+          "driverData.licenseNo": { $regex: licenseNo, $options: "i" },
+        },
       });
     }
 
-    if (plateNo) {
-      citations = citations.filter((citation: any) => {
-        return citation.vehicleId?.plateNo
-          ?.toLowerCase()
-          .includes((plateNo as string).toLowerCase());
-      });
-    }
+    // Get total count before pagination
+    const countPipeline = [...aggregationPipeline, { $count: "total" }];
+    const countResult = await Citation.aggregate(countPipeline);
+    const total = countResult[0]?.total || 0;
 
-    // Get total count (need to run the query without pagination for accurate count)
-    let totalQuery = Citation.find(query);
-    let totalCitations = await totalQuery;
+    // Add sorting, pagination, and projection
+    aggregationPipeline.push(
+      { $sort: sort },
+      { $skip: skip },
+      { $limit: Number(limit) },
+      {
+        $project: {
+          _id: 1,
+          citationNo: 1,
+          status: 1,
+          violations: 1,
+          totalAmount: 1,
+          createdAt: 1,
+          violationDateTime: 1,
+          driverId: {
+            _id: "$driverData._id",
+            firstName: "$driverData.firstName",
+            middleName: "$driverData.middleName",
+            lastName: "$driverData.lastName",
+            licenseNo: "$driverData.licenseNo",
+            email: "$driverData.email",
+            sex: "$driverData.sex",
+            agencyCode: "$driverData.agencyCode",
+          },
+          issuedBy: {
+            _id: "$enforcerData._id",
+            name: "$enforcerData.name",
+            badgeNo: "$enforcerData.badgeNo",
+          },
+        },
+      }
+    );
 
-    // Apply post-population filtering to total count as well
-    if (licenseNo || plateNo) {
-      const populatedTotalCitations = await Citation.find(query)
-        .populate("driverId", "licenseNo")
-        .populate("vehicleId", "plateNo");
+    const citations = await Citation.aggregate(aggregationPipeline);
 
-      totalCitations = populatedTotalCitations.filter((citation: any) => {
-        let matches = true;
-        if (licenseNo) {
-          matches =
-            matches &&
-            citation.driverId?.licenseNo
-              ?.toLowerCase()
-              .includes((licenseNo as string).toLowerCase());
+    // Get counts for each status (for the cards)
+    const baseQuery = { isVoid: false };
+
+    // Apply same date/time filters to count queries
+    if (startDate || endDate) {
+      (baseQuery as any).createdAt = {};
+      if (startDate) {
+        const start = new Date(startDate as string);
+        if (startTime) {
+          const [hours, minutes] = (startTime as string).split(":");
+          start.setHours(parseInt(hours), parseInt(minutes), 0, 0);
         }
-        if (plateNo) {
-          matches =
-            matches &&
-            citation.vehicleId?.plateNo
-              ?.toLowerCase()
-              .includes((plateNo as string).toLowerCase());
+        (baseQuery as any).createdAt.$gte = start;
+      }
+      if (endDate) {
+        const end = new Date(endDate as string);
+        if (endTime) {
+          const [hours, minutes] = (endTime as string).split(":");
+          end.setHours(parseInt(hours), parseInt(minutes), 59, 999);
+        } else {
+          end.setHours(23, 59, 59, 999);
         }
-        return matches;
-      });
+        (baseQuery as any).createdAt.$lte = end;
+      }
     }
 
-    const total = totalCitations.length;
+    const [allCount, pendingCount, overdueCount, resolvedCount] =
+      await Promise.all([
+        Citation.countDocuments(baseQuery),
+        Citation.countDocuments({
+          ...baseQuery,
+          status: CitationStatus.PENDING,
+        }),
+        Citation.countDocuments({
+          ...baseQuery,
+          status: CitationStatus.OVERDUE,
+        }),
+        Citation.countDocuments({ ...baseQuery, status: CitationStatus.PAID }),
+      ]);
 
     return res.status(200).json({
       success: true,
@@ -127,6 +220,12 @@ export const getAllCitations = async (req: Request, res: Response) => {
         page: Number(page),
         limit: Number(limit),
         pages: Math.ceil(total / Number(limit)),
+      },
+      counts: {
+        all: allCount,
+        pending: pendingCount,
+        overdue: overdueCount,
+        resolved: resolvedCount,
       },
       filters: {
         status,
@@ -138,6 +237,8 @@ export const getAllCitations = async (req: Request, res: Response) => {
         licenseNo,
         startDate,
         endDate,
+        startTime,
+        endTime,
       },
     });
   } catch (error: any) {

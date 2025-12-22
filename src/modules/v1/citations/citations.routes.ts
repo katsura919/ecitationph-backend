@@ -9,7 +9,7 @@ import {
   voidCitation,
   getStatistics,
   updateCitation,
-} from "./citations.controller";
+} from "./citations.management.controller";
 import { createCitation } from "./citation.create.ticket.controller";
 
 const router = Router();
