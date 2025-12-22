@@ -3,7 +3,6 @@ import { body, param, query } from "express-validator";
 import { validate } from "../../../middleware/validator";
 import { authenticate } from "../../../middleware/auth.middleware";
 import {
-  createCitation,
   getAllCitations,
   getCitationById,
   getCitationByNumber,
@@ -11,6 +10,7 @@ import {
   getStatistics,
   updateCitation,
 } from "./citations.controller";
+import { createCitation } from "./citation.create.ticket.controller";
 
 const router = Router();
 
