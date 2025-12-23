@@ -269,7 +269,7 @@ export const getCitationById = async (req: Request, res: Response) => {
         "plateNo vehicleType make vehicleModel color ownerFirstName ownerMiddleName ownerLastName"
       )
       .populate("issuedBy", "badgeNo name email contactNo")
-      .populate("violations.violationId");
+      .populate("violations.violationId", "title description");
 
     if (!citation) {
       return res.status(404).json({

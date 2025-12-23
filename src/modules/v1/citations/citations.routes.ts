@@ -100,62 +100,58 @@ const updateOwnershipValidation = [
     .withMessage("Invalid ownership status"),
 ];
 
-/**
- * PUBLIC/AUTHENTICATED ROUTES
- */
 
-// Get citation by citation number (public - for drivers to check their tickets)
-router.get("/number/:citationNo", getCitationByNumber);
 
-// Get citation by ID
-router.get("/:id", validate(getByIdValidation), getCitationById);
+// Get citation by citation number 
+router.get(
+    "/number/:citationNo", 
+    getCitationByNumber
+);
 
-/**
- * PROTECTED ROUTES - Require Authentication
- */
+
 
 // Create citation (Enforcer only - should add role check)
 router.post(
-  "/",
-  //authenticate,
-  validate(createCitationValidation),
-  createCitation
+    "/",
+    //authenticate,
+    validate(createCitationValidation),
+    createCitation
+);
+
+// Get citation by ID
+router.get("/:id", 
+    validate(getByIdValidation), 
+    getCitationById
 );
 
 // Get all citations with filters (Admin/Enforcer)
-// Supports: status, enforcerId, driverId, pagination, sorting
-// Examples:
-// GET /citations - get all citations
-// GET /citations?status=OVERDUE - get overdue citations
-// GET /citations?driverId=123 - get citations by driver
-// GET /citations?enforcerId=456 - get citations by enforcer
 router.get(
-  "/",
-  //authenticate,
-  getAllCitations
+    "/",
+    //authenticate,
+    getAllCitations
 );
 
 // Get statistics (Admin)
 router.get(
-  "/reports/statistics",
-  //authenticate,
-  getStatistics
+    "/reports/statistics",
+    //authenticate,
+    getStatistics
 );
 
 // Update citation (Admin)
 router.put(
-  "/:id",
-  //authenticate,
-  validate(updateCitationValidation),
-  updateCitation
+    "/:id",
+    //authenticate,
+    validate(updateCitationValidation),
+    updateCitation
 );
 
 // Void citation (Admin)
 router.delete(
-  "/:id",
-  //authenticate,
-  validate(voidCitationValidation),
-  voidCitation
+    "/:id",
+    //authenticate,
+    validate(voidCitationValidation),
+    voidCitation
 );
 
 export default router;
