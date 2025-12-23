@@ -326,6 +326,102 @@ export const getCitationByNumber = async (req: Request, res: Response) => {
   }
 };
 
+export const updateCitationStatus = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { status, reason } = req.body;
+
+    const citation = await Citation.findById(id);
+
+    if (!citation) {
+      return res.status(404).json({
+        success: false,
+        error: "Citation not found",
+      });
+    }
+
+    // Check if citation is already voided
+    if (citation.isVoid && status !== CitationStatus.VOID) {
+      return res.status(400).json({
+        success: false,
+        error: "Cannot update status of a voided citation",
+      });
+    }
+
+    // Handle VOID status - requires reason
+    if (status === CitationStatus.VOID) {
+      if (!reason) {
+        return res.status(400).json({
+          success: false,
+          error: "Reason is required when voiding a citation",
+        });
+      }
+
+      if (citation.isVoid) {
+        return res.status(400).json({
+          success: false,
+          error: "Citation is already voided",
+        });
+      }
+
+      await citation.voidCitation(reason, req.user?.id);
+
+      return res.status(200).json({
+        success: true,
+        message: "Citation voided successfully",
+        data: citation,
+      });
+    }
+
+    // Handle CONTESTED status - requires reason
+    if (status === CitationStatus.CONTESTED) {
+      if (!reason) {
+        return res.status(400).json({
+          success: false,
+          error: "Reason is required when contesting a citation",
+        });
+      }
+
+      await citation.contestCitation(reason, req.user?.id);
+
+      return res.status(200).json({
+        success: true,
+        message: "Citation contested successfully",
+        data: citation,
+      });
+    }
+
+    // Handle PAID status - use markAsPaid method
+    if (status === CitationStatus.PAID) {
+      await citation.markAsPaid();
+
+      return res.status(200).json({
+        success: true,
+        message: "Citation marked as paid",
+        data: citation,
+      });
+    }
+
+    // For other statuses, update directly
+    citation.status = status;
+    await citation.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Citation status updated successfully",
+      data: citation,
+    });
+  } catch (error: any) {
+    console.error("Error updating citation status:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Failed to update citation status",
+      details: error.message,
+    });
+  }
+};
+
+// Keep the original voidCitation for backward compatibility
 export const voidCitation = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;

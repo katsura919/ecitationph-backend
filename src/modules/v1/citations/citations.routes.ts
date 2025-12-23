@@ -9,6 +9,7 @@ import {
   voidCitation,
   getStatistics,
   updateCitation,
+  updateCitationStatus,
 } from "./citations.management.controller";
 import { createCitation } from "./citation.create.ticket.controller";
 
@@ -82,6 +83,29 @@ const updateCitationValidation = [
   body("dueDate").optional().isISO8601().withMessage("Invalid due date"),
 ];
 
+// Update citation status validation
+const updateStatusValidation = [
+  param("id").isMongoId().withMessage("Invalid citation ID"),
+  body("status")
+    .notEmpty()
+    .withMessage("Status is required")
+    .isIn([
+      "PENDING",
+      "PAID",
+      "PARTIALLY_PAID",
+      "OVERDUE",
+      "CONTESTED",
+      "DISMISSED",
+      "VOID",
+    ])
+    .withMessage("Invalid status value"),
+  body("reason")
+    .optional()
+    .trim()
+    .isLength({ min: 10 })
+    .withMessage("Reason must be at least 10 characters when provided"),
+];
+
 // Update ownership validation
 const updateOwnershipValidation = [
   param("id").isMongoId().withMessage("Invalid citation ID"),
@@ -100,58 +124,56 @@ const updateOwnershipValidation = [
     .withMessage("Invalid ownership status"),
 ];
 
+// Get citation by citation number
+router.get("/number/:citationNo", getCitationByNumber);
 
-
-// Get citation by citation number 
-router.get(
-    "/number/:citationNo", 
-    getCitationByNumber
-);
-
-
-
-// Create citation (Enforcer only - should add role check)
+// Create citation 
 router.post(
-    "/",
-    //authenticate,
-    validate(createCitationValidation),
-    createCitation
+  "/",
+  //authenticate,
+  validate(createCitationValidation),
+  createCitation
 );
 
 // Get citation by ID
-router.get("/:id", 
-    validate(getByIdValidation), 
-    getCitationById
-);
+router.get("/:id", validate(getByIdValidation), getCitationById);
 
-// Get all citations with filters (Admin/Enforcer)
+// Get all citations with filters 
 router.get(
-    "/",
-    //authenticate,
-    getAllCitations
+  "/",
+  //authenticate,
+  getAllCitations
 );
 
 // Get statistics (Admin)
 router.get(
-    "/reports/statistics",
-    //authenticate,
-    getStatistics
+  "/reports/statistics",
+  //authenticate,
+  getStatistics
 );
 
 // Update citation (Admin)
 router.put(
-    "/:id",
-    //authenticate,
-    validate(updateCitationValidation),
-    updateCitation
+  "/:id",
+  //authenticate,
+  validate(updateCitationValidation),
+  updateCitation
 );
 
-// Void citation (Admin)
+// Update citation status (Admin)
+router.patch(
+  "/:id/status",
+  //authenticate,
+  validate(updateStatusValidation),
+  updateCitationStatus
+);
+
+// Void citation (Admin) - Deprecated, use PATCH /:id/status instead
 router.delete(
-    "/:id",
-    //authenticate,
-    validate(voidCitationValidation),
-    voidCitation
+  "/:id",
+  //authenticate,
+  validate(voidCitationValidation),
+  voidCitation
 );
 
 export default router;
