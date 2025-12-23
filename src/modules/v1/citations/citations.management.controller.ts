@@ -25,7 +25,7 @@ export const getAllCitations = async (req: Request, res: Response) => {
       sortOrder = "desc",
     } = req.query;
 
-    const query: any = { isVoid: false };
+    const query: any = {};
 
     // Only filter by status if explicitly provided
     // Support both single status and array of statuses
@@ -173,7 +173,7 @@ export const getAllCitations = async (req: Request, res: Response) => {
     const citations = await Citation.aggregate(aggregationPipeline);
 
     // Get counts for each status (for the cards)
-    const baseQuery = { isVoid: false };
+    const baseQuery = {};
 
     // Apply same date/time filters to count queries
     if (startDate || endDate) {
