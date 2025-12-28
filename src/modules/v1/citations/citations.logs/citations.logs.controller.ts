@@ -14,12 +14,7 @@ export const getCitationLogs = async (req: Request, res: Response) => {
   try {
     const { citationId } = req.params;
 
-    if (!mongoose.Types.ObjectId.isValid(citationId)) {
-      return res.status(400).json({
-        success: false,
-        error: "Invalid citation ID",
-      });
-    }
+
 
     const citation = await Citation.findById(citationId);
     if (!citation) {
