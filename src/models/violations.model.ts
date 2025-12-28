@@ -123,10 +123,6 @@ const ViolationSchema = new Schema<IViolation, IViolationModel>(
   }
 );
 
-// Indexes for efficient querying
-ViolationSchema.index({ code: 1, ordinanceId: 1 });
-ViolationSchema.index({ ordinanceId: 1, isActive: 1 });
-ViolationSchema.index({ isActive: 1 });
 
 /**
  * Validation: Ensure penalties array is not empty

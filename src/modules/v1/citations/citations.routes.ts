@@ -127,13 +127,13 @@ const updateOwnershipValidation = [
 // Get citation by citation number
 router.get("/number/:citationNo", getCitationByNumber);
 
-// Create citation
-router.post(
-  "/",
-  //authenticate,
-  validate(createCitationValidation),
-  createCitation
-);
+// // Create citation
+// router.post(
+//   "/",
+//   //authenticate,
+//   validate(createCitationValidation),
+//   createCitation
+// );
 
 // Get citation by ID
 router.get("/:id", validate(getByIdValidation), getCitationById);

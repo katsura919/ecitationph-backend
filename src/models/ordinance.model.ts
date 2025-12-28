@@ -1,15 +1,6 @@
 import mongoose, { Document, Schema, Model } from "mongoose";
 
-/**
- * Ordinance Document Interface
- *
- * This model groups related violations under a single ordinance/law.
- * Uses the same versioning system as Violations for data immutability:
- * - Ordinances are never actually deleted (soft delete with isActive flag)
- * - Updates create a new version instead of modifying existing records
- * - The version field tracks the evolution of an ordinance
- * - Violations reference their parent ordinance
- */
+
 export interface IOrdinance extends Document {
   // Identification
   ordinanceNo: string; // e.g., "ORD-2020-001", "R.A. 4136"
@@ -151,11 +142,7 @@ const OrdinanceSchema = new Schema<IOrdinance, IOrdinanceModel>(
   }
 );
 
-// Indexes for efficient querying
-OrdinanceSchema.index({ ordinanceNo: 1, version: 1 });
-OrdinanceSchema.index({ ordinanceGroupId: 1, version: -1 });
-OrdinanceSchema.index({ isActive: 1, effectiveFrom: 1 });
-OrdinanceSchema.index({ dateIssued: -1 });
+
 
 // Compound index for finding current active ordinances
 OrdinanceSchema.index({
