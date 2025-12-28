@@ -1,6 +1,6 @@
-import { Request, Response } from 'express';
-import Violation, { IViolation } from '../../../models/violations.model';
-import mongoose from 'mongoose';
+import { Request, Response } from "express";
+import Violation, { IViolation } from "../../../models/violations.model";
+import mongoose from "mongoose";
 
 /**
  * Violations Controller
@@ -15,32 +15,46 @@ import mongoose from 'mongoose';
 export const createViolation = async (req: Request, res: Response) => {
   try {
     const violationData = req.body;
-    
-    // Generate a unique violation group ID for new violations
-    const violationGroupId = new mongoose.Types.ObjectId().toString();
-    
+
+    // Validate ordinanceId is provided
+    if (!violationData.ordinanceId) {
+      return res.status(400).json({
+        success: false,
+        error: "ordinanceId is required",
+      });
+    }
+
+    // Validate penalties array
+    if (
+      !violationData.penalties ||
+      !Array.isArray(violationData.penalties) ||
+      violationData.penalties.length === 0
+    ) {
+      return res.status(400).json({
+        success: false,
+        error: "At least one penalty must be provided",
+      });
+    }
+
     const violation = new Violation({
       ...violationData,
-      violationGroupId,
-      version: 1,
-      effectiveFrom: violationData.effectiveFrom || new Date(),
       createdBy: req.user?.id,
-      isActive: true
+      isActive: true,
     });
 
     await violation.save();
 
     return res.status(201).json({
       success: true,
-      message: 'Violation created successfully',
-      data: violation
+      message: "Violation created successfully",
+      data: violation,
     });
   } catch (error: any) {
-    console.error('Error creating violation:', error);
+    console.error("Error creating violation:", error);
     return res.status(500).json({
       success: false,
-      error: 'Failed to create violation',
-      details: error.message
+      error: "Failed to create violation",
+      details: error.message,
     });
   }
 };
@@ -57,46 +71,46 @@ export const getAllActiveViolations = async (req: Request, res: Response) => {
     return res.status(200).json({
       success: true,
       count: violations.length,
-      data: violations
+      data: violations,
     });
   } catch (error: any) {
-    console.error('Error fetching violations:', error);
+    console.error("Error fetching violations:", error);
     return res.status(500).json({
       success: false,
-      error: 'Failed to fetch violations',
-      details: error.message
+      error: "Failed to fetch violations",
+      details: error.message,
     });
   }
 };
 
 /**
  * @route   GET /api/violations/code/:code
- * @desc    Get current active violation by code
+ * @desc    Get active violation by code
  * @access  Public or Authenticated
  */
 export const getViolationByCode = async (req: Request, res: Response) => {
   try {
     const { code } = req.params;
-    
-    const violation = await Violation.getCurrentByCode(code);
+
+    const violation = await Violation.getByCode(code);
 
     if (!violation) {
       return res.status(404).json({
         success: false,
-        error: 'Violation not found'
+        error: "Violation not found",
       });
     }
 
     return res.status(200).json({
       success: true,
-      data: violation
+      data: violation,
     });
   } catch (error: any) {
-    console.error('Error fetching violation:', error);
+    console.error("Error fetching violation:", error);
     return res.status(500).json({
       success: false,
-      error: 'Failed to fetch violation',
-      details: error.message
+      error: "Failed to fetch violation",
+      details: error.message,
     });
   }
 };
@@ -113,7 +127,7 @@ export const getViolationById = async (req: Request, res: Response) => {
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid violation ID'
+        error: "Invalid violation ID",
       });
     }
 
@@ -122,107 +136,55 @@ export const getViolationById = async (req: Request, res: Response) => {
     if (!violation) {
       return res.status(404).json({
         success: false,
-        error: 'Violation not found'
+        error: "Violation not found",
       });
     }
 
     return res.status(200).json({
       success: true,
-      data: violation
+      data: violation,
     });
   } catch (error: any) {
-    console.error('Error fetching violation:', error);
+    console.error("Error fetching violation:", error);
     return res.status(500).json({
       success: false,
-      error: 'Failed to fetch violation',
-      details: error.message
+      error: "Failed to fetch violation",
+      details: error.message,
     });
   }
 };
 
 /**
- * @route   GET /api/violations/history/:violationGroupId
- * @desc    Get all versions of a violation by violationGroupId
- * @access  Admin only
+ * @route   GET /api/violations/ordinance/:ordinanceId
+ * @desc    Get all violations by ordinance
+ * @access  Public or Authenticated
  */
-export const getViolationHistory = async (req: Request, res: Response) => {
+export const getViolationsByOrdinance = async (req: Request, res: Response) => {
   try {
-    const { violationGroupId } = req.params;
+    const { ordinanceId } = req.params;
 
-    const history = await Violation.getHistory(violationGroupId);
-
-    if (!history || history.length === 0) {
-      return res.status(404).json({
+    if (!mongoose.Types.ObjectId.isValid(ordinanceId)) {
+      return res.status(400).json({
         success: false,
-        error: 'No violation history found'
+        error: "Invalid ordinance ID",
       });
     }
+
+    const violations = await Violation.getByOrdinance(
+      new mongoose.Types.ObjectId(ordinanceId)
+    );
 
     return res.status(200).json({
       success: true,
-      count: history.length,
-      data: history
+      count: violations.length,
+      data: violations,
     });
   } catch (error: any) {
-    console.error('Error fetching violation history:', error);
+    console.error("Error fetching violations by ordinance:", error);
     return res.status(500).json({
       success: false,
-      error: 'Failed to fetch violation history',
-      details: error.message
-    });
-  }
-};
-
-/**
- * @route   PUT /api/violations/:id
- * @desc    Update violation (creates new version)
- * @access  Admin only
- */
-export const updateViolation = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const updates = req.body;
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid violation ID'
-      });
-    }
-
-    const violation = await Violation.findById(id);
-
-    if (!violation) {
-      return res.status(404).json({
-        success: false,
-        error: 'Violation not found'
-      });
-    }
-
-    if (!violation.isActive) {
-      return res.status(400).json({
-        success: false,
-        error: 'Cannot update an inactive or superseded violation'
-      });
-    }
-
-    // Create new version
-    const newVersion = await violation.createNewVersion(updates, req.user?.id);
-
-    return res.status(200).json({
-      success: true,
-      message: 'Violation updated successfully (new version created)',
-      data: {
-        oldVersion: violation,
-        newVersion
-      }
-    });
-  } catch (error: any) {
-    console.error('Error updating violation:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to update violation',
-      details: error.message
+      error: "Failed to fetch violations",
+      details: error.message,
     });
   }
 };
@@ -239,7 +201,7 @@ export const deleteViolation = async (req: Request, res: Response) => {
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid violation ID'
+        error: "Invalid violation ID",
       });
     }
 
@@ -248,14 +210,14 @@ export const deleteViolation = async (req: Request, res: Response) => {
     if (!violation) {
       return res.status(404).json({
         success: false,
-        error: 'Violation not found'
+        error: "Violation not found",
       });
     }
 
     if (!violation.isActive) {
       return res.status(400).json({
         success: false,
-        error: 'Violation is already inactive'
+        error: "Violation is already inactive",
       });
     }
 
@@ -264,15 +226,15 @@ export const deleteViolation = async (req: Request, res: Response) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Violation deactivated successfully',
-      data: violation
+      message: "Violation deactivated successfully",
+      data: violation,
     });
   } catch (error: any) {
-    console.error('Error deleting violation:', error);
+    console.error("Error deleting violation:", error);
     return res.status(500).json({
       success: false,
-      error: 'Failed to delete violation',
-      details: error.message
+      error: "Failed to delete violation",
+      details: error.message,
     });
   }
 };
@@ -287,24 +249,24 @@ export const searchViolations = async (req: Request, res: Response) => {
     const {
       code,
       title,
-      fineStructure,
+      ordinanceId,
       isActive = true,
-      includeInactive = false
+      includeInactive = false,
     } = req.body;
 
     const query: any = {};
 
     // Build query
     if (code) {
-      query.code = { $regex: code, $options: 'i' };
+      query.code = { $regex: code, $options: "i" };
     }
 
     if (title) {
-      query.title = { $regex: title, $options: 'i' };
+      query.title = { $regex: title, $options: "i" };
     }
 
-    if (fineStructure) {
-      query.fineStructure = fineStructure;
+    if (ordinanceId) {
+      query.ordinanceId = ordinanceId;
     }
 
     if (!includeInactive) {
@@ -314,20 +276,21 @@ export const searchViolations = async (req: Request, res: Response) => {
     }
 
     const violations = await Violation.find(query)
-      .sort({ code: 1, version: -1 })
+      .populate("ordinanceId")
+      .sort({ code: 1 })
       .limit(100);
 
     return res.status(200).json({
       success: true,
       count: violations.length,
-      data: violations
+      data: violations,
     });
   } catch (error: any) {
-    console.error('Error searching violations:', error);
+    console.error("Error searching violations:", error);
     return res.status(500).json({
       success: false,
-      error: 'Failed to search violations',
-      details: error.message
+      error: "Failed to search violations",
+      details: error.message,
     });
   }
 };
@@ -344,7 +307,7 @@ export const bulkCreateViolations = async (req: Request, res: Response) => {
     if (!Array.isArray(violations) || violations.length === 0) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid request. Provide an array of violations.'
+        error: "Invalid request. Provide an array of violations.",
       });
     }
 
@@ -353,15 +316,18 @@ export const bulkCreateViolations = async (req: Request, res: Response) => {
 
     for (const violationData of violations) {
       try {
-        const violationGroupId = new mongoose.Types.ObjectId().toString();
-        
+        // Validate required fields
+        if (!violationData.ordinanceId) {
+          throw new Error("ordinanceId is required");
+        }
+        if (!violationData.penalties || violationData.penalties.length === 0) {
+          throw new Error("At least one penalty is required");
+        }
+
         const violation = new Violation({
           ...violationData,
-          violationGroupId,
-          version: 1,
-          effectiveFrom: violationData.effectiveFrom || new Date(),
           createdBy: req.user?.id,
-          isActive: true
+          isActive: true,
         });
 
         await violation.save();
@@ -369,7 +335,7 @@ export const bulkCreateViolations = async (req: Request, res: Response) => {
       } catch (error: any) {
         errors.push({
           code: violationData.code,
-          error: error.message
+          error: error.message,
         });
       }
     }
@@ -381,98 +347,69 @@ export const bulkCreateViolations = async (req: Request, res: Response) => {
         created: createdViolations.length,
         failed: errors.length,
         violations: createdViolations,
-        errors: errors.length > 0 ? errors : undefined
-      }
+        errors: errors.length > 0 ? errors : undefined,
+      },
     });
   } catch (error: any) {
-    console.error('Error bulk creating violations:', error);
+    console.error("Error bulk creating violations:", error);
     return res.status(500).json({
       success: false,
-      error: 'Failed to bulk create violations',
-      details: error.message
+      error: "Failed to bulk create violations",
+      details: error.message,
     });
   }
 };
 
 /**
- * @route   GET /api/violations/calculate-fine
- * @desc    Calculate fine for a specific violation
+ * @route   GET /api/violations/:id/penalties
+ * @desc    Get penalties for a specific violation
  * @access  Public or Authenticated
  */
-export const calculateFine = async (req: Request, res: Response) => {
+export const getViolationPenalties = async (req: Request, res: Response) => {
   try {
-    const { code, vehicleType, offenderType, offenseCount = 1 } = req.query;
+    const { id } = req.params;
 
-    if (!code || !vehicleType || !offenderType) {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
         success: false,
-        error: 'Missing required parameters: code, vehicleType, offenderType'
+        error: "Invalid violation ID",
       });
     }
 
-    const violation = await Violation.getCurrentByCode(code as string);
+    const violation = await Violation.findById(id);
 
     if (!violation) {
       return res.status(404).json({
         success: false,
-        error: 'Violation not found'
+        error: "Violation not found",
       });
     }
 
-    let fine = 0;
-    const vType = vehicleType as 'PRIVATE' | 'FOR_HIRE';
-    const oType = offenderType as 'driver' | 'mvOwner' | 'operator';
-
-    if (violation.fineStructure === 'FIXED') {
-      if (violation.fixedFine) {
-        if (vType === 'PRIVATE') {
-          fine = violation.fixedFine.private[oType === 'mvOwner' ? 'mvOwner' : 'driver'];
-        } else if (vType === 'FOR_HIRE') {
-          fine = violation.fixedFine.forHire[oType === 'operator' ? 'operator' : 'driver'];
-        }
-      }
-    } else if (violation.fineStructure === 'PROGRESSIVE') {
-      if (violation.progressiveFine) {
-        const count = parseInt(offenseCount as string);
-        let penalty;
-
-        if (vType === 'PRIVATE') {
-          penalty = violation.progressiveFine.private[oType === 'mvOwner' ? 'mvOwner' : 'driver'];
-        } else if (vType === 'FOR_HIRE') {
-          penalty = violation.progressiveFine.forHire[oType === 'operator' ? 'operator' : 'driver'];
-        }
-
-        if (penalty) {
-          if (count === 1) fine = penalty.firstOffense;
-          else if (count === 2) fine = penalty.secondOffense || penalty.firstOffense;
-          else if (count === 3) fine = penalty.thirdOffense || penalty.secondOffense || penalty.firstOffense;
-          else fine = penalty.subsequentOffense || penalty.thirdOffense || penalty.secondOffense || penalty.firstOffense;
-        }
-      }
+    if (!violation.isActive) {
+      return res.status(400).json({
+        success: false,
+        error: "Violation is inactive",
+      });
     }
 
     return res.status(200).json({
       success: true,
       data: {
         violation: {
+          id: violation._id,
           code: violation.code,
           title: violation.title,
-          fineStructure: violation.fineStructure
+          description: violation.description,
         },
-        calculation: {
-          vehicleType: vType,
-          offenderType: oType,
-          offenseCount: parseInt(offenseCount as string),
-          fine
-        }
-      }
+        penalties: violation.penalties,
+      },
     });
   } catch (error: any) {
-    console.error('Error calculating fine:', error);
+    console.error("Error fetching violation penalties:", error);
     return res.status(500).json({
       success: false,
-      error: 'Failed to calculate fine',
-      details: error.message
+      error: "Failed to fetch violation penalties",
+      details: error.message,
     });
   }
 };

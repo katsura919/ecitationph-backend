@@ -7,12 +7,9 @@ import {
   getAllActiveViolations,
   getViolationByCode,
   getViolationById,
-  getViolationHistory,
-  updateViolation,
   deleteViolation,
   searchViolations,
   bulkCreateViolations,
-  calculateFine
 } from './violations.controller';
 
 const router = Router();
@@ -124,12 +121,6 @@ router.get(
   getViolationByCode
 );
 
-// Calculate fine for a violation
-router.get(
-  '/calculate-fine',
-  validate(calculateFineValidation),
-  calculateFine
-);
 
 // Search violations (POST for complex query body)
 router.post(
@@ -144,10 +135,6 @@ router.get(
   getViolationById
 );
 
-/**
- * Protected Routes (Admin only - should add admin role check middleware)
- * For now, using basic authentication. You should add role-based middleware
- */
 
 // Create a new violation (Admin only)
 router.post(
@@ -164,20 +151,6 @@ router.post(
   bulkCreateViolations
 );
 
-// Get violation history (Admin only)
-router.get(
-  '/history/:violationGroupId',
-  //authenticate, // Add admin role check here
-  getViolationHistory
-);
-
-// Update violation - creates new version (Admin only)
-router.put(
-  '/:id',
-  //authenticate, // Add admin role check here
-  validate(updateViolationValidation),
-  updateViolation
-);
 
 // Soft delete violation (Admin only)
 router.delete(

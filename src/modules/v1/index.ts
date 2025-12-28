@@ -1,5 +1,6 @@
 import { Router } from "express";
 import violationRoutes from "./violations/violations.routes";
+import ordinanceRoutes from "./ordinance/ordinance.routes";
 import authDriverRoutes from "./authentication/driver/driver.auth.routes";
 import authEnforcerRoutes from "./authentication/enforcer/enforcer.auth.routes";
 import authAdminRoutes from "./authentication/admin/admin.auth.routes";
@@ -12,6 +13,7 @@ import vehicleRoutes from "./vehicles/vehicles.routes";
 const router = Router();
 
 router.use("/violations", violationRoutes);
+router.use("/ordinances", ordinanceRoutes);
 router.use("/auth/driver", authDriverRoutes);
 router.use("/auth/enforcer", authEnforcerRoutes);
 router.use("/auth/admin", authAdminRoutes);
