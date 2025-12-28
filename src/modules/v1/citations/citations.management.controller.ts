@@ -344,6 +344,7 @@ export const updateCitationStatus = async (req: Request, res: Response) => {
       });
     }
 
+    const userId = req.user.id;
     const previousStatus = citation.status;
 
     // Check if citation is already voided
@@ -373,17 +374,17 @@ export const updateCitationStatus = async (req: Request, res: Response) => {
         });
       }
 
-      await citation.voidCitation(reason, req.user?.id);
+      await citation.voidCitation(reason, userId);
 
       // Log the void action
       await CitationLog.create({
         citationId: citation._id,
         citationNo: citation.citationNo,
         actionType: LogActionType.VOIDED,
-        description: `Citation voided: ${reason}`,
+        description: `Citation voided`,
         previousStatus,
         newStatus: CitationStatus.VOID,
-        performedBy: req.user?.id,
+        performedBy: userId,
         performedByRole: userRole,
         reason,
       });
@@ -404,17 +405,17 @@ export const updateCitationStatus = async (req: Request, res: Response) => {
         });
       }
 
-      await citation.contestCitation(reason, req.user?.id);
+      await citation.contestCitation(reason, userId);
 
       // Log the contest action
       await CitationLog.create({
         citationId: citation._id as mongoose.Types.ObjectId,
         citationNo: citation.citationNo,
         actionType: LogActionType.CONTESTED,
-        description: `Citation contested: ${reason}`,
+        description: "Citation contested",
         previousStatus,
         newStatus: CitationStatus.CONTESTED,
-        performedBy: req.user?.id,
+        performedBy: userId,
         performedByRole: userRole,
         reason,
       });
@@ -436,7 +437,7 @@ export const updateCitationStatus = async (req: Request, res: Response) => {
         citation.citationNo,
         previousStatus,
         CitationStatus.PAID,
-        req.user?.id,
+        userId,
         userRole,
         "Citation marked as fully paid"
       );
@@ -458,7 +459,7 @@ export const updateCitationStatus = async (req: Request, res: Response) => {
       citation.citationNo,
       previousStatus,
       status,
-      req.user?.id,
+      userId,
       userRole,
       reason
     );
@@ -513,10 +514,11 @@ export const voidCitation = async (req: Request, res: Response) => {
       });
     }
 
+    const userId = req.user.id;
     const previousStatus = citation.status;
     const userRole = req.user?.role || UserRole.ADMIN;
 
-    await citation.voidCitation(reason, req.user?.id);
+    await citation.voidCitation(reason, userId);
 
     // Log the void action
     await CitationLog.create({
@@ -526,7 +528,7 @@ export const voidCitation = async (req: Request, res: Response) => {
       description: `Citation voided: ${reason}`,
       previousStatus,
       newStatus: CitationStatus.VOID,
-      performedBy: req.user?.id,
+      performedBy: userId,
       performedByRole: userRole,
       reason,
     });
@@ -597,6 +599,7 @@ export const updateCitation = async (req: Request, res: Response) => {
       });
     }
 
+    const userId = req.user.id;
     const userRole = req.user?.role || UserRole.ADMIN;
     const updates: string[] = [];
 
@@ -610,7 +613,7 @@ export const updateCitation = async (req: Request, res: Response) => {
         citation._id as mongoose.Types.ObjectId,
         citation.citationNo,
         notes,
-        req.user?.id,
+        userId,
         userRole
       );
     }
@@ -631,7 +634,7 @@ export const updateCitation = async (req: Request, res: Response) => {
           citationNo: citation.citationNo,
           actionType: LogActionType.IMAGE_ADDED,
           description: `${newCount - previousCount} image(s) added`,
-          performedBy: req.user?.id,
+          performedBy: userId,
           performedByRole: userRole,
         });
       } else if (newCount < previousCount) {
@@ -640,7 +643,7 @@ export const updateCitation = async (req: Request, res: Response) => {
           citationNo: citation.citationNo,
           actionType: LogActionType.IMAGE_REMOVED,
           description: `${previousCount - newCount} image(s) removed`,
-          performedBy: req.user?.id,
+          performedBy: userId,
           performedByRole: userRole,
         });
       }
@@ -659,7 +662,7 @@ export const updateCitation = async (req: Request, res: Response) => {
         description: `Due date changed from ${
           oldDueDate.toISOString().split("T")[0]
         } to ${citation.dueDate.toISOString().split("T")[0]}`,
-        performedBy: req.user?.id,
+        performedBy: userId,
         performedByRole: userRole,
         metadata: {
           oldDueDate: oldDueDate,
