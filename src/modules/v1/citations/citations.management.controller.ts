@@ -3,6 +3,10 @@ import Citation, {
   ICitation,
   CitationStatus,
 } from "../../../models/citation.model";
+import CitationLog, {
+  LogActionType,
+  UserRole,
+} from "../../../models/citation.log.model";
 import mongoose from "mongoose";
 
 export const getAllCitations = async (req: Request, res: Response) => {
@@ -340,6 +344,8 @@ export const updateCitationStatus = async (req: Request, res: Response) => {
       });
     }
 
+    const previousStatus = citation.status;
+
     // Check if citation is already voided
     if (citation.isVoid && status !== CitationStatus.VOID) {
       return res.status(400).json({
@@ -347,6 +353,9 @@ export const updateCitationStatus = async (req: Request, res: Response) => {
         error: "Cannot update status of a voided citation",
       });
     }
+
+    // Determine user role (adjust based on your auth implementation)
+    const userRole = req.user?.role || UserRole.ADMIN;
 
     // Handle VOID status - requires reason
     if (status === CitationStatus.VOID) {
@@ -366,6 +375,19 @@ export const updateCitationStatus = async (req: Request, res: Response) => {
 
       await citation.voidCitation(reason, req.user?.id);
 
+      // Log the void action
+      await CitationLog.create({
+        citationId: citation._id,
+        citationNo: citation.citationNo,
+        actionType: LogActionType.VOIDED,
+        description: `Citation voided: ${reason}`,
+        previousStatus,
+        newStatus: CitationStatus.VOID,
+        performedBy: req.user?.id,
+        performedByRole: userRole,
+        reason,
+      });
+
       return res.status(200).json({
         success: true,
         message: "Citation voided successfully",
@@ -384,6 +406,19 @@ export const updateCitationStatus = async (req: Request, res: Response) => {
 
       await citation.contestCitation(reason, req.user?.id);
 
+      // Log the contest action
+      await CitationLog.create({
+        citationId: citation._id as mongoose.Types.ObjectId,
+        citationNo: citation.citationNo,
+        actionType: LogActionType.CONTESTED,
+        description: `Citation contested: ${reason}`,
+        previousStatus,
+        newStatus: CitationStatus.CONTESTED,
+        performedBy: req.user?.id,
+        performedByRole: userRole,
+        reason,
+      });
+
       return res.status(200).json({
         success: true,
         message: "Citation contested successfully",
@@ -395,6 +430,17 @@ export const updateCitationStatus = async (req: Request, res: Response) => {
     if (status === CitationStatus.PAID) {
       await citation.markAsPaid();
 
+      // Log the payment status change
+      await CitationLog.logStatusChange(
+        citation._id as mongoose.Types.ObjectId,
+        citation.citationNo,
+        previousStatus,
+        CitationStatus.PAID,
+        req.user?.id,
+        userRole,
+        "Citation marked as fully paid"
+      );
+
       return res.status(200).json({
         success: true,
         message: "Citation marked as paid",
@@ -402,9 +448,20 @@ export const updateCitationStatus = async (req: Request, res: Response) => {
       });
     }
 
-    // For other statuses, update directly
+    // For other statuses, update directly and log
     citation.status = status;
     await citation.save();
+
+    // Log the status change
+    await CitationLog.logStatusChange(
+      citation._id as mongoose.Types.ObjectId,
+      citation.citationNo,
+      previousStatus,
+      status,
+      req.user?.id,
+      userRole,
+      reason
+    );
 
     return res.status(200).json({
       success: true,
@@ -421,7 +478,6 @@ export const updateCitationStatus = async (req: Request, res: Response) => {
   }
 };
 
-// Keep the original voidCitation for backward compatibility
 export const voidCitation = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -457,7 +513,23 @@ export const voidCitation = async (req: Request, res: Response) => {
       });
     }
 
+    const previousStatus = citation.status;
+    const userRole = req.user?.role || UserRole.ADMIN;
+
     await citation.voidCitation(reason, req.user?.id);
+
+    // Log the void action
+    await CitationLog.create({
+      citationId: citation._id,
+      citationNo: citation.citationNo,
+      actionType: LogActionType.VOIDED,
+      description: `Citation voided: ${reason}`,
+      previousStatus,
+      newStatus: CitationStatus.VOID,
+      performedBy: req.user?.id,
+      performedByRole: userRole,
+      reason,
+    });
 
     return res.status(200).json({
       success: true,
@@ -474,11 +546,6 @@ export const voidCitation = async (req: Request, res: Response) => {
   }
 };
 
-/**
- * @route   GET /api/citations/statistics
- * @desc    Get citation statistics
- * @access  Admin
- */
 export const getStatistics = async (req: Request, res: Response) => {
   try {
     const { startDate, endDate } = req.query;
@@ -530,17 +597,86 @@ export const updateCitation = async (req: Request, res: Response) => {
       });
     }
 
-    // Update allowed fields
-    if (notes !== undefined) citation.notes = notes;
-    if (images !== undefined) citation.images = images;
-    if (dueDate !== undefined) citation.dueDate = new Date(dueDate);
+    const userRole = req.user?.role || UserRole.ADMIN;
+    const updates: string[] = [];
 
-    await citation.save();
+    // Update allowed fields and track changes
+    if (notes !== undefined && notes !== citation.notes) {
+      citation.notes = notes;
+      updates.push("notes");
+
+      // Log note update
+      await CitationLog.logNote(
+        citation._id as mongoose.Types.ObjectId,
+        citation.citationNo,
+        notes,
+        req.user?.id,
+        userRole
+      );
+    }
+
+    if (
+      images !== undefined &&
+      JSON.stringify(images) !== JSON.stringify(citation.images)
+    ) {
+      const previousCount = citation.images?.length || 0;
+      citation.images = images;
+      const newCount = images.length;
+      updates.push("images");
+
+      // Log image changes
+      if (newCount > previousCount) {
+        await CitationLog.create({
+          citationId: citation._id,
+          citationNo: citation.citationNo,
+          actionType: LogActionType.IMAGE_ADDED,
+          description: `${newCount - previousCount} image(s) added`,
+          performedBy: req.user?.id,
+          performedByRole: userRole,
+        });
+      } else if (newCount < previousCount) {
+        await CitationLog.create({
+          citationId: citation._id,
+          citationNo: citation.citationNo,
+          actionType: LogActionType.IMAGE_REMOVED,
+          description: `${previousCount - newCount} image(s) removed`,
+          performedBy: req.user?.id,
+          performedByRole: userRole,
+        });
+      }
+    }
+
+    if (dueDate !== undefined) {
+      const oldDueDate = citation.dueDate;
+      citation.dueDate = new Date(dueDate);
+      updates.push("dueDate");
+
+      // Log due date change
+      await CitationLog.create({
+        citationId: citation._id,
+        citationNo: citation.citationNo,
+        actionType: LogActionType.UPDATED,
+        description: `Due date changed from ${
+          oldDueDate.toISOString().split("T")[0]
+        } to ${citation.dueDate.toISOString().split("T")[0]}`,
+        performedBy: req.user?.id,
+        performedByRole: userRole,
+        metadata: {
+          oldDueDate: oldDueDate,
+          newDueDate: citation.dueDate,
+        },
+      });
+    }
+
+    if (updates.length > 0) {
+      await citation.save();
+    }
 
     return res.status(200).json({
       success: true,
       message: "Citation updated successfully",
       data: citation,
+      updatedFields: updates,
     });
   } catch (error: any) {
     console.error("Error updating citation:", error);
