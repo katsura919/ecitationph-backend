@@ -27,22 +27,39 @@ export const createOrdinance = async (req: Request, res: Response) => {
       violations,
     } = req.body;
 
-    // Create ordinance first
-    const ordinance = new Ordinance({
+    console.log("Creating ordinance with data:", {
       ordinanceNo,
       title,
-      description,
       dateIssued,
+    });
+
+    // Validate required fields
+    if (!ordinanceNo || !description) {
+      return res.status(400).json({
+        success: false,
+        error: "Missing required fields",
+        details: "ordinanceNo and description are required",
+      });
+    }
+
+    // Create ordinance first
+    const ordinance = new Ordinance({
+      ordinanceNo: ordinanceNo.toUpperCase(),
+      title,
+      description,
+      dateIssued: dateIssued || new Date(),
       dateApproved,
       legalReference,
       remarks,
       attachments,
       violations: [],
+      effectiveFrom: dateIssued || new Date(), // Set effectiveFrom (required field)
       createdBy: req.user?.id,
       isActive: true,
     });
 
     await ordinance.save();
+    console.log("Ordinance saved successfully:", ordinance._id);
 
     // If violations are provided, create them and link to ordinance
     if (violations && Array.isArray(violations) && violations.length > 0) {
