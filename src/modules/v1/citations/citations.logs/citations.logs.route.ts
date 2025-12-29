@@ -1,12 +1,12 @@
-import { Router } from "express";
+import { Router } from 'express';
 import {
-  getCitationLogs,
-  getCitationLogsByNumber,
-  addCitationNote,
-  getUserLogs,
-  getFilteredLogs,
-  getActivitySummary,
-} from "./citations.logs.controller";
+    getCitationLogs,
+    getCitationLogsByNumber,
+    addCitationNote,
+    getUserLogs,
+    getFilteredLogs,
+    getActivitySummary,
+} from './citations.logs.controller';
 
 const router = Router();
 
@@ -16,7 +16,7 @@ const router = Router();
  * @access  Private
  * @query   citationId, actionType, performedBy, startDate, endDate, page, limit
  */
-router.get("/", getFilteredLogs);
+router.get('/', getFilteredLogs);
 
 /**
  * @route   GET /api/v1/citations/logs/activity-summary
@@ -24,21 +24,21 @@ router.get("/", getFilteredLogs);
  * @access  Private (Admin only)
  * @query   startDate, endDate, userId
  */
-router.get("/activity-summary", getActivitySummary);
+router.get('/activity-summary', getActivitySummary);
 
 /**
  * @route   GET /api/v1/citations/logs/citation/:citationId
  * @desc    Get all logs for a specific citation by ID
  * @access  Private
  */
-router.get("/citation/:citationId", getCitationLogs);
+router.get('/citation/:citationId', getCitationLogs);
 
 /**
  * @route   GET /api/v1/citations/logs/citation-no/:citationNo
  * @desc    Get all logs for a specific citation by citation number
  * @access  Private
  */
-router.get("/citation-no/:citationNo", getCitationLogsByNumber);
+router.get('/citation-no/:citationNo', getCitationLogsByNumber);
 
 /**
  * @route   POST /api/v1/citations/logs/citation/:citationId/note
@@ -46,13 +46,13 @@ router.get("/citation-no/:citationNo", getCitationLogsByNumber);
  * @access  Private
  * @body    { note: string }
  */
-router.post("/citation/:citationId/note", addCitationNote);
+router.post('/citation/:citationId/note', addCitationNote);
 
 /**
  * @route   GET /api/v1/citations/logs/user/:userId
  * @desc    Get all logs by a specific user
  * @access  Private (Admin only)
  */
-router.get("/user/:userId", getUserLogs);
+router.get('/user/:userId', getUserLogs);
 
 export default router;

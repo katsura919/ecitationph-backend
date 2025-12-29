@@ -1,395 +1,401 @@
-import mongoose, { Schema, Document } from "mongoose";
-import bcrypt from "bcryptjs";
+import mongoose, { Schema, Document } from 'mongoose';
+import bcrypt from 'bcryptjs';
 
 /**
  * Driver Status
  */
 export enum DriverStatus {
-  ACTIVE = "ACTIVE",
-  INACTIVE = "INACTIVE",
-  SUSPENDED = "SUSPENDED",
-  EXPIRED = "EXPIRED",
+    ACTIVE = 'ACTIVE',
+    INACTIVE = 'INACTIVE',
+    SUSPENDED = 'SUSPENDED',
+    EXPIRED = 'EXPIRED',
 }
 
 /**
  * Blood Type Enum
  */
 export enum BloodType {
-  A_POSITIVE = "A+",
-  A_NEGATIVE = "A-",
-  B_POSITIVE = "B+",
-  B_NEGATIVE = "B-",
-  AB_POSITIVE = "AB+",
-  AB_NEGATIVE = "AB-",
-  O_POSITIVE = "O+",
-  O_NEGATIVE = "O-",
+    A_POSITIVE = 'A+',
+    A_NEGATIVE = 'A-',
+    B_POSITIVE = 'B+',
+    B_NEGATIVE = 'B-',
+    AB_POSITIVE = 'AB+',
+    AB_NEGATIVE = 'AB-',
+    O_POSITIVE = 'O+',
+    O_NEGATIVE = 'O-',
 }
 
 /**
  * Sex/Gender Enum
  */
 export enum Sex {
-  MALE = "MALE",
-  FEMALE = "FEMALE",
+    MALE = 'MALE',
+    FEMALE = 'FEMALE',
 }
 
 /**
  * Driver Interface
  */
 export interface IDriver extends Document {
-  driverID: string; // Unique driver identifier
-  licenseNo?: string;
-  firstName: string;
-  middleName?: string;
-  lastName: string;
-  nationality: string;
-  sex: Sex;
-  birthDate: Date;
-  weight?: number; // in kg
-  height?: number; // in meters
+    driverID: string; // Unique driver identifier
+    licenseNo?: string;
+    firstName: string;
+    middleName?: string;
+    lastName: string;
+    nationality: string;
+    sex: Sex;
+    birthDate: Date;
+    weight?: number; // in kg
+    height?: number; // in meters
 
-  // Address breakdown
-  address: {
-    street: string;
-    barangay: string;
-    city: string;
-    province: string;
-    postalCode: string;
-  };
+    // Address breakdown
+    address: {
+        street: string;
+        barangay: string;
+        city: string;
+        province: string;
+        postalCode: string;
+    };
 
-  // License details
-  expirationDate: Date;
-  agencyCode?: string;
+    // License details
+    expirationDate: Date;
+    agencyCode?: string;
 
-  // Physical characteristics
-  bloodType?: BloodType;
-  conditions?: string[]; // Medical conditions or restrictions
-  eyesColor?: string;
+    // Physical characteristics
+    bloodType?: BloodType;
+    conditions?: string[]; // Medical conditions or restrictions
+    eyesColor?: string;
 
-  // DL Codes (Driving Restrictions/Conditions)
-  dlCodes?: string[]; // e.g., ['1', '2'] for restriction codes
+    // DL Codes (Driving Restrictions/Conditions)
+    dlCodes?: string[]; // e.g., ['1', '2'] for restriction codes
 
-  // Profile and authentication
-  picture?: string; // URL or path to driver's photo
-  email?: string;
-  password: string;
-  contactNo: string; // Contact number
+    // Profile and authentication
+    picture?: string; // URL or path to driver's photo
+    email?: string;
+    password: string;
+    contactNo: string; // Contact number
 
-  status: DriverStatus;
+    status: DriverStatus;
 
-  createdAt: Date;
-  updatedAt: Date;
+    createdAt: Date;
+    updatedAt: Date;
 
-  // Methods
-  comparePassword(candidatePassword: string): Promise<boolean>;
-  getFullName(): string;
-  isLicenseExpired(): boolean;
-  getAge(): number;
+    // Methods
+    comparePassword(candidatePassword: string): Promise<boolean>;
+    getFullName(): string;
+    isLicenseExpired(): boolean;
+    getAge(): number;
 }
 
 /**
  * Driver Schema
  */
 const DriverSchema: Schema = new Schema(
-  {
-    driverID: {
-      type: String,
-      unique: true,
-      sparse: true, // Allow multiple null values during creation
-    },
-    licenseNo: {
-      type: String,
-      unique: true,
-      sparse: true,
-      trim: true,
-      uppercase: true,
-    },
-    firstName: {
-      type: String,
-      required: [true, "First name is required"],
-      trim: true,
-      minlength: [2, "First name must be at least 2 characters"],
-      maxlength: [50, "First name must not exceed 50 characters"],
-    },
-    middleName: {
-      type: String,
-      trim: true,
-      maxlength: [50, "Middle name must not exceed 50 characters"],
-    },
-    lastName: {
-      type: String,
-      required: [true, "Last name is required"],
-      trim: true,
-      minlength: [2, "Last name must be at least 2 characters"],
-      maxlength: [50, "Last name must not exceed 50 characters"],
-    },
-    nationality: {
-      type: String,
-      required: [true, "Nationality is required"],
-      trim: true,
-      maxlength: [50, "Nationality must not exceed 50 characters"],
-      default: "Filipino",
-    },
-    sex: {
-      type: String,
-      required: [true, "Sex is required"],
-      enum: {
-        values: Object.values(Sex),
-        message: "{VALUE} is not a valid sex",
-      },
-    },
-    birthDate: {
-      type: Date,
-      required: [true, "Birth date is required"],
-    },
-    weight: {
-      type: Number,
-    },
-    height: {
-      type: Number,
-    },
-
-    // Address breakdown
-    address: {
-      street: {
-        type: String,
-        required: [true, "Street is required"],
-        trim: true,
-        maxlength: [100, "Street must not exceed 100 characters"],
-      },
-      barangay: {
-        type: String,
-        required: [true, "Barangay is required"],
-        trim: true,
-        maxlength: [100, "Barangay must not exceed 100 characters"],
-      },
-      city: {
-        type: String,
-        required: [true, "City is required"],
-        trim: true,
-        maxlength: [100, "City must not exceed 100 characters"],
-      },
-      province: {
-        type: String,
-        required: [true, "Province is required"],
-        trim: true,
-        maxlength: [100, "Province must not exceed 100 characters"],
-      },
-      postalCode: {
-        type: String,
-        required: [true, "Postal code is required"],
-        trim: true,
-        match: [/^[0-9]{4}$/, "Please provide a valid 4-digit postal code"],
-      },
-    },
-
-    // License details
-    expirationDate: {
-      type: Date,
-      required: [true, "License expiration date is required"],
-      validate: {
-        validator: function (value: Date) {
-          // Expiration date should be in the future for new registrations
-          return true; // Allow expired licenses to be recorded
+    {
+        driverID: {
+            type: String,
+            unique: true,
+            sparse: true, // Allow multiple null values during creation
         },
-        message: "Invalid expiration date",
-      },
-    },
-    agencyCode: {
-      type: String,
-      trim: true,
-      uppercase: true,
-      maxlength: [20, "Agency code must not exceed 20 characters"],
-    },
+        licenseNo: {
+            type: String,
+            unique: true,
+            sparse: true,
+            trim: true,
+            uppercase: true,
+        },
+        firstName: {
+            type: String,
+            required: [true, 'First name is required'],
+            trim: true,
+            minlength: [2, 'First name must be at least 2 characters'],
+            maxlength: [50, 'First name must not exceed 50 characters'],
+        },
+        middleName: {
+            type: String,
+            trim: true,
+            maxlength: [50, 'Middle name must not exceed 50 characters'],
+        },
+        lastName: {
+            type: String,
+            required: [true, 'Last name is required'],
+            trim: true,
+            minlength: [2, 'Last name must be at least 2 characters'],
+            maxlength: [50, 'Last name must not exceed 50 characters'],
+        },
+        nationality: {
+            type: String,
+            required: [true, 'Nationality is required'],
+            trim: true,
+            maxlength: [50, 'Nationality must not exceed 50 characters'],
+            default: 'Filipino',
+        },
+        sex: {
+            type: String,
+            required: [true, 'Sex is required'],
+            enum: {
+                values: Object.values(Sex),
+                message: '{VALUE} is not a valid sex',
+            },
+        },
+        birthDate: {
+            type: Date,
+            required: [true, 'Birth date is required'],
+        },
+        weight: {
+            type: Number,
+        },
+        height: {
+            type: Number,
+        },
 
-    // Physical characteristics
-    bloodType: {
-      type: String,
-      enum: {
-        values: Object.values(BloodType),
-        message: "{VALUE} is not a valid blood type",
-      },
-    },
-    conditions: [
-      {
-        type: String,
-        trim: true,
-      },
-    ],
-    eyesColor: {
-      type: String,
-      trim: true,
-      maxlength: [20, "Eye color must not exceed 20 characters"],
-    },
+        // Address breakdown
+        address: {
+            street: {
+                type: String,
+                required: [true, 'Street is required'],
+                trim: true,
+                maxlength: [100, 'Street must not exceed 100 characters'],
+            },
+            barangay: {
+                type: String,
+                required: [true, 'Barangay is required'],
+                trim: true,
+                maxlength: [100, 'Barangay must not exceed 100 characters'],
+            },
+            city: {
+                type: String,
+                required: [true, 'City is required'],
+                trim: true,
+                maxlength: [100, 'City must not exceed 100 characters'],
+            },
+            province: {
+                type: String,
+                required: [true, 'Province is required'],
+                trim: true,
+                maxlength: [100, 'Province must not exceed 100 characters'],
+            },
+            postalCode: {
+                type: String,
+                required: [true, 'Postal code is required'],
+                trim: true,
+                match: [
+                    /^[0-9]{4}$/,
+                    'Please provide a valid 4-digit postal code',
+                ],
+            },
+        },
 
-    // DL Codes (Driving Restrictions)
-    dlCodes: [
-      {
-        type: String,
-        trim: true,
-      },
-    ],
+        // License details
+        expirationDate: {
+            type: Date,
+            required: [true, 'License expiration date is required'],
+            validate: {
+                validator: function (value: Date) {
+                    // Expiration date should be in the future for new registrations
+                    return true; // Allow expired licenses to be recorded
+                },
+                message: 'Invalid expiration date',
+            },
+        },
+        agencyCode: {
+            type: String,
+            trim: true,
+            uppercase: true,
+            maxlength: [20, 'Agency code must not exceed 20 characters'],
+        },
 
-    // Profile and authentication
-    picture: {
-      type: String,
-      default: null,
-    },
-    email: {
-      type: String,
-      unique: true,
-      sparse: true,
-      trim: true,
-      lowercase: true,
-      match: [/^\S+@\S+\.\S+$/, "Please provide a valid email address"],
-      index: true,
-    },
-    password: {
-      type: String,
-      required: [true, "Password is required"],
-      minlength: [6, "Password must be at least 6 characters"],
-      select: false, // Don't return password by default in queries
-    },
-    contactNo: {
-      type: String,
-      required: [true, "Contact number is required"],
-      trim: true,
-      match: [/^[0-9]{11}$/, "Please provide a valid 11-digit contact number"],
-    },
+        // Physical characteristics
+        bloodType: {
+            type: String,
+            enum: {
+                values: Object.values(BloodType),
+                message: '{VALUE} is not a valid blood type',
+            },
+        },
+        conditions: [
+            {
+                type: String,
+                trim: true,
+            },
+        ],
+        eyesColor: {
+            type: String,
+            trim: true,
+            maxlength: [20, 'Eye color must not exceed 20 characters'],
+        },
 
-    status: {
-      type: String,
-      required: [true, "Status is required"],
-      enum: {
-        values: Object.values(DriverStatus),
-        message: "{VALUE} is not a valid status",
-      },
-      default: DriverStatus.ACTIVE,
-      index: true,
+        // DL Codes (Driving Restrictions)
+        dlCodes: [
+            {
+                type: String,
+                trim: true,
+            },
+        ],
+
+        // Profile and authentication
+        picture: {
+            type: String,
+            default: null,
+        },
+        email: {
+            type: String,
+            unique: true,
+            sparse: true,
+            trim: true,
+            lowercase: true,
+            match: [/^\S+@\S+\.\S+$/, 'Please provide a valid email address'],
+            index: true,
+        },
+        password: {
+            type: String,
+            required: [true, 'Password is required'],
+            minlength: [6, 'Password must be at least 6 characters'],
+            select: false, // Don't return password by default in queries
+        },
+        contactNo: {
+            type: String,
+            required: [true, 'Contact number is required'],
+            trim: true,
+            match: [
+                /^[0-9]{11}$/,
+                'Please provide a valid 11-digit contact number',
+            ],
+        },
+
+        status: {
+            type: String,
+            required: [true, 'Status is required'],
+            enum: {
+                values: Object.values(DriverStatus),
+                message: '{VALUE} is not a valid status',
+            },
+            default: DriverStatus.ACTIVE,
+            index: true,
+        },
     },
-  },
-  {
-    timestamps: true, // Automatically adds createdAt and updatedAt
-  }
+    {
+        timestamps: true, // Automatically adds createdAt and updatedAt
+    }
 );
 
 /**
  * Hash password before saving
  */
-DriverSchema.pre<IDriver>("save", async function (next) {
-  // Only hash the password if it has been modified (or is new)
-  if (!this.isModified("password")) {
-    return next();
-  }
+DriverSchema.pre<IDriver>('save', async function (next) {
+    // Only hash the password if it has been modified (or is new)
+    if (!this.isModified('password')) {
+        return next();
+    }
 
-  try {
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-  } catch (error: any) {
-    next(error);
-  }
+    try {
+        const salt = await bcrypt.genSalt(10);
+        this.password = await bcrypt.hash(this.password, salt);
+        next();
+    } catch (error: any) {
+        next(error);
+    }
 });
 
 /**
  * Auto-generate driverID if not provided
  */
-DriverSchema.pre<IDriver>("save", async function (next) {
-  if (!this.driverID) {
-    // Generate a unique driver ID using counter (e.g., DRV-2025-000001)
-    const year = new Date().getFullYear();
-    const Driver = this.constructor as any;
+DriverSchema.pre<IDriver>('save', async function (next) {
+    if (!this.driverID) {
+        // Generate a unique driver ID using counter (e.g., DRV-2025-000001)
+        const year = new Date().getFullYear();
+        const Driver = this.constructor as any;
 
-    // Find the last driver ID for this year
-    const lastDriver = await Driver.findOne({
-      driverID: new RegExp(`^DRV-${year}-`),
-    }).sort({ driverID: -1 });
+        // Find the last driver ID for this year
+        const lastDriver = await Driver.findOne({
+            driverID: new RegExp(`^DRV-${year}-`),
+        }).sort({ driverID: -1 });
 
-    let counter = 1;
-    if (lastDriver && lastDriver.driverID) {
-      const lastNumber = parseInt(lastDriver.driverID.split("-")[2]);
-      counter = isNaN(lastNumber) ? 1 : lastNumber + 1;
+        let counter = 1;
+        if (lastDriver && lastDriver.driverID) {
+            const lastNumber = parseInt(lastDriver.driverID.split('-')[2]);
+            counter = isNaN(lastNumber) ? 1 : lastNumber + 1;
+        }
+
+        this.driverID = `DRV-${year}-${counter.toString().padStart(6, '0')}`;
     }
-
-    this.driverID = `DRV-${year}-${counter.toString().padStart(6, "0")}`;
-  }
-  next();
+    next();
 });
 
 /**
  * Method to compare password
  */
 DriverSchema.methods.comparePassword = async function (
-  candidatePassword: string
+    candidatePassword: string
 ): Promise<boolean> {
-  try {
-    return await bcrypt.compare(candidatePassword, this.password);
-  } catch (error) {
-    return false;
-  }
+    try {
+        return await bcrypt.compare(candidatePassword, this.password);
+    } catch (error) {
+        return false;
+    }
 };
 
 /**
  * Method to get full name
  */
 DriverSchema.methods.getFullName = function (): string {
-  const parts = [this.firstName, this.middleName, this.lastName].filter(
-    Boolean
-  );
-  return parts.join(" ");
+    const parts = [this.firstName, this.middleName, this.lastName].filter(
+        Boolean
+    );
+    return parts.join(' ');
 };
 
 /**
  * Method to check if license is expired
  */
 DriverSchema.methods.isLicenseExpired = function (): boolean {
-  return new Date() > this.expirationDate;
+    return new Date() > this.expirationDate;
 };
 
 /**
  * Method to get age
  */
 DriverSchema.methods.getAge = function (): number {
-  const today = new Date();
-  const birthDate = new Date(this.birthDate);
-  let age = today.getFullYear() - birthDate.getFullYear();
-  const monthDiff = today.getMonth() - birthDate.getMonth();
+    const today = new Date();
+    const birthDate = new Date(this.birthDate);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
 
-  if (
-    monthDiff < 0 ||
-    (monthDiff === 0 && today.getDate() < birthDate.getDate())
-  ) {
-    age--;
-  }
+    if (
+        monthDiff < 0 ||
+        (monthDiff === 0 && today.getDate() < birthDate.getDate())
+    ) {
+        age--;
+    }
 
-  return age;
+    return age;
 };
 
 /**
  * Static method: Find driver by license number
  */
 DriverSchema.statics.findByLicenseNo = function (licenseNo: string) {
-  return this.findOne({ licenseNo: licenseNo.toUpperCase() });
+    return this.findOne({ licenseNo: licenseNo.toUpperCase() });
 };
 
 /**
  * Static method: Find drivers with expired licenses
  */
 DriverSchema.statics.findExpiredLicenses = function () {
-  return this.find({
-    expirationDate: { $lt: new Date() },
-    status: { $ne: DriverStatus.EXPIRED },
-  });
+    return this.find({
+        expirationDate: { $lt: new Date() },
+        status: { $ne: DriverStatus.EXPIRED },
+    });
 };
 
 /**
  * Static method: Find active drivers
  */
 DriverSchema.statics.findActiveDrivers = function () {
-  return this.find({ status: DriverStatus.ACTIVE });
+    return this.find({ status: DriverStatus.ACTIVE });
 };
 
 // Export the model
-const Driver = mongoose.model<IDriver>("Driver", DriverSchema);
+const Driver = mongoose.model<IDriver>('Driver', DriverSchema);
 
 export default Driver;
