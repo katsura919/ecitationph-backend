@@ -1,6 +1,5 @@
 import mongoose, { Document, Schema, Model } from "mongoose";
 
-
 export interface IOrdinance extends Document {
   // Identification
   ordinanceNo: string; // e.g., "ORD-2020-001", "R.A. 4136"
@@ -142,8 +141,6 @@ const OrdinanceSchema = new Schema<IOrdinance, IOrdinanceModel>(
   }
 );
 
-
-
 // Compound index for finding current active ordinances
 OrdinanceSchema.index({
   isActive: 1,
@@ -195,18 +192,7 @@ OrdinanceSchema.statics.getCurrentByOrdinanceNo = function (
  * Static method: Get all active ordinances
  */
 OrdinanceSchema.statics.getAllActive = function () {
-  const now = new Date();
-  const query: any = {
-    isActive: true,
-    effectiveFrom: { $lte: now },
-    $or: [
-      { effectiveUntil: { $exists: false } },
-      { effectiveUntil: null },
-      { effectiveUntil: { $gt: now } },
-    ],
-  };
-
-  return this.find(query)
+  return this.find({})
     .populate("violations")
     .populate("createdBy", "firstname lastname email")
     .sort({ dateIssued: -1, ordinanceNo: 1 });

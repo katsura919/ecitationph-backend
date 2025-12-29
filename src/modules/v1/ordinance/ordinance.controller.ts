@@ -55,7 +55,7 @@ export const createOrdinance = async (req: Request, res: Response) => {
       violations: [],
       effectiveFrom: dateIssued || new Date(), // Set effectiveFrom (required field)
       createdBy: req.user?.id,
-      isActive: true,
+      isActive: false,
     });
 
     await ordinance.save();
@@ -70,7 +70,7 @@ export const createOrdinance = async (req: Request, res: Response) => {
           ...violationData,
           ordinanceId: ordinance._id,
           createdBy: req.user?.id,
-          isActive: true,
+          isActive: false,
         });
 
         await violation.save();
