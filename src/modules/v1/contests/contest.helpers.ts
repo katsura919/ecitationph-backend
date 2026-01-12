@@ -4,7 +4,8 @@ import {
     IContestModel,
     ContestStatus,
 } from '../../../models/contest.model';
-import Citation, { CitationStatus } from '../../../models/citation.model';
+import Citation from '../../../models/citation.model';
+import { CitationStatus } from '../../../types/citation.model.types';
 
 /**
  * STATIC METHODS

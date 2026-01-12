@@ -1,10 +1,11 @@
 import { Request, Response } from 'express';
-import CitationLog, {
+import CitationLog from '../../../../models/citation.log.model';
+import Citation from '../../../../models/citation.model';
+import {
     ICitationLog,
     LogActionType,
     UserRole,
-} from '../../../../models/citation.log.model';
-import Citation from '../../../../models/citation.model';
+} from '../../../../types/citation.log.types'
 import mongoose from 'mongoose';
 
 /**

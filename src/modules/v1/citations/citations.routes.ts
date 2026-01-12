@@ -11,7 +11,7 @@ import {
     updateCitation,
     updateCitationStatus,
 } from './citations.management.controller';
-import { createCitation } from './citation.create.ticket.controller';
+//import { createCitation } from './citation.create.ticket.controller';
 
 const router = Router();
 

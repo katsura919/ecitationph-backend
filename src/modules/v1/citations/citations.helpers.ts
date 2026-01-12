@@ -3,7 +3,7 @@ import {
     ICitation,
     ICitationModel,
     CitationStatus,
-} from '../../../models/citation.model';
+} from '../../../types/citation.model.types';
 
 /**
  * STATIC METHODS

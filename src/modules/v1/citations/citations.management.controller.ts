@@ -1,12 +1,14 @@
 import { Request, Response } from 'express';
-import Citation, {
+import Citation from '../../../models/citation.model'
+import CitationLog from '../../../models/citation.log.model'
+import {
     ICitation,
     CitationStatus,
-} from '../../../models/citation.model';
-import CitationLog, {
+} from '../../../types/citation.model.types';
+import {
     LogActionType,
     UserRole,
-} from '../../../models/citation.log.model';
+} from '../../../types/citation.log.types';
 import mongoose from 'mongoose';
 
 export const getAllCitations = async (req: Request, res: Response) => {
